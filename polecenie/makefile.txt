@@ -1,0 +1,12 @@
+- ma dzialac na linuxie
+- byc w c++ z socketami systemowymi
+- kompilowac sie g++ z `-Wall, -Wextra -O2 -std=c++17`
+
+- ma być dołączony makefile
+- oddajemy jako ab123456.zip (albo inne archiwum)
+
+-----------------------------------------------------
+
+MAKEFILE
+po wykonaniu make ma powstać `screen-worms-server` i `screen-worms-client`
+ma wspierać clean, który kasuje wszystko co powstało łącznie z plikami wykonywalnymi

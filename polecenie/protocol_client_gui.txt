@@ -1,0 +1,42 @@
+3. Protokół komunikacyjny pomiędzy klientem a interfejsem użytkownika
+
+Wymiana danych odbywa się po TCP.
+
+Komunikaty:
+- w formie tekstowej
+- każdy w osobnej linii
+- liczby są reprezentowane dziesiętnie
+- linia zakończona jest znakiem o kodzie 10
+- jeżeli linia ma kilka wartości, to wysyłający oddziela je pojedynczą spacją i nie dołącza leading/trailing whitespaces
+
+Niepoprawne komunikaty są ignorowane przez odbiorcę.
+Odebranie komunikatu nie jest potwierdzane żadną wiadomością zwrotną.
+
+-----------------------------------------------------
+
+KOMUNIKATY AKCEPTOWANE PRZEZ SERVER GUI
+
+"NEW_GAME maxx maxy player_name1 player_name2 …" = "NEW_GAME maxx maxy player_name+"
+"PIXEL x y player_name"
+"PLAYER_ELIMINATED player_name"
+
+player_name = [ascii 33..126]{1,20}
+x, y = int in range(0, maxx), range(0, maxy)
+
+Lewy górny róg planszy ma współrzędne (0, 0), odcięte rosną w prawo, a rzędne w dół.
+
+jak mam plansze 2x2 to:
+
+(0, 0) to lewy górny
+(1, 0) to prawy górny
+(0, 1) to lewy dolny
+(1, 1) to prawy dolny
+
+-----------------------------------------------------
+
+KOMUNIKATY WYSYŁANE PRZEZ SERVER GUI
+
+LEFT_KEY_DOWN
+LEFT_KEY_UP
+RIGHT_KEY_DOWN
+RIGHT_KEY_UP

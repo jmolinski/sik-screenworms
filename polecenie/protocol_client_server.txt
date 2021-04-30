@@ -1,0 +1,183 @@
+2. Protokół komunikacyjny pomiędzy klientem a serwerem
+
+Wymiana danych odbywa się po UDP.
+W datagramach przesyłane są dane BINARNE, zgodne z poniżej zdefiniowanymi formatami komunikatów.
+W komunikatach wszystkie liczby przesyłane są w SIECIOWEJ KOLEJNOŚCI BAJTÓW.
+
+-----------------------------------------------------
+
+KOMUNIKATY OD KLIENTA DO SERVERA
+
+INTERWAŁ komunikatu 30 ms
+Komunikacja odbywa się ZAWSZE, nawet jeśli partia się jeszcze nie rozpoczęła lub już się zakończyła.
+
+pola:
+- session_id: uint64_t
+    -> Pole session_id jest takie samo dla wszystkich datagramów wysyłanych przez danego klienta.
+    -> Klient przy uruchomieniu ustala session_id na bieżący czas wyrażony w mikrosekundach od 1970-01-01 00:00:00 +0000 (UTC).
+- turn_direction: uint8_t, wartość 0 → prosto, wartość 1 → w prawo, wartość 2 → w lewo
+    -> wskazuje, czy gracz chce skręcać (czy ma wciśniętą którąś ze strzałek w lewo lub prawo na klawiaturze).
+- next_expected_event_no – uint32_t
+- player_name: [ascii 33..126]{0,20}
+    -> Puste player_name oznacza, że klient nie ma zamiaru włączać się do gry, jednakże chętnie poobserwuje, co się dzieje na planszy.
+
+-----------------------------------------------------
+
+KOMUNIKATY OD SERVERA DO KLIENTA
+
+Komunikat od serwera do klienta ma kolejno następujące pola:
+
+pola:
+- game_id: uint32_t
+- events: zmienna liczba rekordów
+
+Serwer wysyła taki komunikat natychmiast po odebraniu komunikatu od klienta.
+Wysyła zdarzenia o numerach, począwszy od odebranego next_expected_event_no aż do ostatniego dostępnego.
+Jeśli takich zdarzeń nie ma, serwer nic nie wysyła w odpowiedzi.
+
+WAŻNE Dodatkowo serwer wysyła taki komunikat do wszystkich klientów po pojawieniu się nowego zdarzenia.
+
+Maksymalny rozmiar pola danych datagramu UDP wysyłanego przez serwer wynosi 548 bajtów.
+Jeśli serwer potrzebuje wysłać więcej zdarzeń, niż może zmieścić w jednym datagramie UDP, wysyła je w kolejnych komunikatach.
+W tym przypadku wszystkie oprócz ostatniego muszą zawierać maksymalną liczbę zdarzeń możliwą do umieszczenia w pojedynczym datagramie.
+
+Pole game_id służy do identyfikacji bieżącej partii w sytuacji, gdy do klienta mogą dochodzić opóźnione datagramy z uprzednio zakończonej partii.
+
+-----------------------------------------------------
+
+REKORDY ZDARZEŃ
+
+pola rekordu:
+- len: uint32_t
+    -> sumaryczna długość pól event_*
+event_no: uint32_t
+    -> dla każdej partii kolejne wartości, począwszy od zera
+event_type: uint8_t
+event_data: zależy od typu
+crc32: uint32_t
+    -> suma kontrolna obejmująca pola od pola len do event_data włącznie, obliczona standardowym algorytmem CRC-32-IEEE
+
+
+Możliwe rodzaje zdarzeń:
+    NEW_GAME, PIXEL, PLAYER_ELIMINATED, GAME_OVER
+
+-----------------------------------------------------
+
+EVENT DATA DLA RÓŻNYCH ZDARZEŃ
+
+NEW_GAME
+    event_type: 0
+
+    event_data:
+        - maxx: uint32_t
+            -> szerokość planszy w pikselach
+        - maxy: uint32_t
+            -> wysokość planszy w pikselach
+
+
+następnie lista nazw graczy zawierająca dla każdego z graczy player_name, jak w punkcie „2.1. Komunikaty od klienta do serwera”, oraz znak '\0'
+
+PIXEL
+    event_type: 1
+
+    event_data:
+        player_number: uint8_t
+        x: uint32_t
+            -> odcięta
+        y: uint32_t
+            -> rzędna
+
+PLAYER_ELIMINATED
+    event_type: 2
+
+    event_data:
+        ->  player_number: uint8_t
+
+GAME_OVER
+    event_type: 3
+    event_data: brak
+        -> Wśród nazw graczy w zdarzeniu NEW_GAME nie umieszcza się pustych nazw obserwatorów.
+
+Kolejność graczy w zdarzeniu NEW_GAME oraz ich numerację w zdarzeniach PIXEL i NEW_GAME ustala się ustawiając alfabetycznie ich nazwy.
+Graczy numeruje się od zera.
+
+-----------------------------------------------------
+
+GENERATOR LICZB LOSOWYCH
+
+Do wytwarzania wartości losowych należy użyć poniższego deterministycznego generatora liczb 32-bitowych. Kolejne wartości zwracane przez ten generator wyrażone są wzorem:
+
+r_0 = seed
+r_i = (r_{i-1} * 279410273) mod 4294967291
+gdzie wartość seed jest 32-bitowa i jest przekazywana do serwera za pomocą parametru -s (domyślnie są to 32 młodsze bity wartości zwracanej przez wywołanie time(NULL)). W pierwszym wywołaniu generatora powinna zostać zwrócona wartość r_0 == seed.
+
+Należy użyć dokładnie takiego generatora, żeby umożliwić automatyczne testowanie rozwiązania (uwaga na konieczność wykonywania pośrednich obliczeń na typie 64-bitowym).
+
+-----------------------------------------------------
+
+STAN GRY
+
+Podczas partii serwer utrzymuje stan gry, w skład którego wchodzą m.in.:
+
+- numer partii (game_id), wysyłany w każdym wychodzącym datagramie
+- bieżące współrzędne robaka każdego z graczy (jako liczby zmiennoprzecinkowe o co najmniej podwójnej precyzji) oraz kierunek ruchu robaka
+- zdarzenia wygenerowane od początku gry (patrz punkt „2.3. Rekordy opisujące zdarzenia” oraz dalej)
+- zjedzone piksele planszy
+- Lewy górny róg planszy ma współrzędne (0, 0), odcięte rosną w prawo, a rzędne w dół. Kierunek ruchu jest wyrażony w stopniach, zgodnie z ruchem wskazówek zegara, a 0 oznacza kierunek w prawo.
+
+Warto tu podkreślić, że bieżąca pozycja robaka jest obliczana i przechowywana w formacie zmiennoprzecinkowym. Przy konwersji pozycji zmiennoprzecinkowej na współrzędne piksela stosuje się zaokrąglanie w dół. Uznajemy, że pozycja po zaokrągleniu znajduje się na planszy, jeśli rzędna znajduje się w przedziale domkniętym [0, maxy - 1], a odcięta w przedziale domkniętym [0, maxx - 1].
+
+-----------------------------------------------------
+
+2.6. Podłączanie i odłączanie graczy
+Podłączenie nowego gracza może odbyć się w dowolnym momencie. Wystarczy, że serwer odbierze prawidłowy komunikat od nowego klienta. Jeśli nowy gracz podłączy się podczas partii, staje się jej obserwatorem, otrzymuje informacje o wszystkich zdarzeniach, które miały miejsce od początku partii. Do walki dołącza w kolejnej partii.
+
+Jeśli podłączy się gracz, który w komunikatach przesyła puste pole player_name, to taki gracz nie walczy, ale może obserwować rozgrywane partie.
+
+Brak komunikacji od gracza przez 2 sekundy skutkuje jego odłączeniem. Jeśli gra się już rozpoczęła, robak takiego gracza nie znika i nadal porusza się wg algorytmu z punktu „2.8. Przebieg partii”.
+
+Klienty są identyfikowane za pomocą par (gniazdo, session_id), jednakże otrzymanie komunikatu z gniazda istniejącego klienta, aczkolwiek z większym niż dotychczasowe session_id, jest równoznaczne z odłączeniem istniejącego klienta i podłączeniem nowego. Komunikaty z mniejszym niż dotychczasowe session_id należy ignorować.
+
+Pakiety otrzymane z nieznanego dotychczas gniazda, jednakże z nazwą podłączonego już klienta, są ignorowane.
+
+-----------------------------------------------------
+
+2.7. Rozpoczęcie partii i zarządzanie podłączonymi klientami
+Do rozpoczęcia partii potrzeba, aby wszyscy podłączeni gracze (o niepustej nazwie) nacisnęli strzałkę (przysłali wartość turn_direction różną od zera) oraz żeby tych graczy było co najmniej dwóch.
+
+Stan gry jest inicjowany w następujący sposób (kolejność wywołań rand() ma znaczenie i należy użyć generatora z punktu „2.4. Generator liczb losowych”). Graczy inicjuje się w kolejności alfabetycznej ich nazw.
+
+game_id = rand()
+wygeneruj zdarzenie NEW_GAME
+dla kolejnych graczy zainicjuj pozycję i kierunek ruchu ich robaków
+  x_robaka_gracza = (rand() mod maxx) + 0.5
+  y_robaka_gracza = (rand() mod maxy) + 0.5
+  kierunek_robaka_gracza = rand() mod 360
+  jeśli piksel zajmowany przez robaka jest jedzony, to
+    wygeneruj zdarzenie PLAYER_ELIMINATED
+  w przeciwnym razie
+    wygeneruj zdarzenie PIXEL
+A zatem z gry można odpaść już na starcie.
+
+-----------------------------------------------------
+
+2.8. Przebieg partii
+Partia składa się z tur. Tura trwa 1/ROUNDS_PER_SEC sekundy. Ruchy graczy wyznacza się w kolejności alfabetycznej ich nazw.
+
+dla kolejnych graczy
+  jeśli ostatni turn_direction == 1, to
+    kierunek_robaka_gracza += TURNING_SPEED
+  jeśli ostatni turn_direction == 2, to
+    kierunek_robaka_gracza −= TURNING_SPEED
+  przesuń robaka o 1 w bieżącym kierunku
+  jeśli w wyniku przesunięcia robak nie zmienił piksela, to
+    continue
+  jeśli robak zmienił piksel na piksel jedzony lub już zjedzony, albo wyszedł poza planszę, to
+    wygeneruj zdarzenie PLAYER_ELIMINATED
+  w przeciwnym razie
+    wygeneruj zdarzenie PIXEL
+
+-----------------------------------------------------
+
+2.9. Zakończenie partii
+Gdy na planszy zostanie tylko jeden robak, gra się kończy. Generowane jest zdarzenie GAME_OVER. Po zakończeniu partii serwer wciąż obsługuje komunikację z klientami. Jeśli w takiej sytuacji serwer otrzyma od każdego podłączonego klienta (o niepustej nazwie) co najmniej jeden komunikat z turn_direction różnym od zera, rozpoczyna kolejną partię. Klienty muszą radzić sobie z sytuacją, gdy po rozpoczęciu nowej gry będą dostawać jeszcze stare, opóźnione datagramy z poprzedniej gry.

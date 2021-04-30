@@ -1,0 +1,69 @@
+4. Ustalenia dodatkowe
+
+Programy powinny umożliwiać komunikację zarówno przy użyciu IPv4, jak i IPv6.
+
+-----------------------------------------------------
+
+PARSOWANIE CIĄGÓW EVENTÓW Z DATAGRAMÓW PRZEZ KLIENTA
+
+- pierwsze zdarzenie z niepoprawną sumą kontrolną powoduje zaprzestanie przetwarzania kolejnych w tym datagramie, ale poprzednie pozostają w mocy;
+- rekord z poprawną sumą kontrolną, znanego typu, jednakże z bezsensownymi wartościami, powoduje zakończenie klienta z odpowiednim komunikatem i kodem wyjścia 1;
+- pomija się zdarzenia z poprawną sumą kontrolną oraz nieznanym typem.
+- Program klienta w przypadku błędu połączenia z serwerem gry lub interfejsem użytkownika powinien się zakończyć z kodem wyjścia 1,
+  uprzednio wypisawszy zrozumiały komunikat na standardowe wyjście błędów.
+
+-----------------------------------------------------
+
+Program serwera powinien być odporny na sytuacje błędne, które dają szansę na kontynuowanie działania.
+Intencja jest taka, że serwer powinien móc być uruchomiony na stałe bez konieczności jego restartowania,
+np. w przypadku kłopotów komunikacyjnych, czasowej niedostępności sieci, zwykłych zmian jej konfiguracji itp.
+
+Serwer nie musi obsługiwać więcej niż 25 podłączonych graczy jednocześnie.
+Dodatkowi gracze ponad limit nie mogą jednak przeszkadzać wcześniej podłączonym.
+
+-----------------------------------------------------
+
+W serwerze opóźnienia w komunikacji z jakimś podzbiorem klientów nie mogą wpływać na jakość komunikacji z pozostałymi klientami.
+Analogicznie w kliencie opóźnienia w komunikacji z interfejsem użytkownika nie mogą wpływać na regularność wysyłania komunikatów do serwera gry.
+Patrz też: https://stackoverflow.com/questions/4165174/when-does-a-udp-sendto-block
+
+-----------------------------------------------------
+
+Czynności okresowe (tury oraz wysyłanie komunikatów od klienta do serwera) powinny być wykonywane
+w odstępach niezależnych od czasu przetwarzania danych, obciążenia komputera czy też obciążenia sieci.
+Implementacja, która np. robi sleep(20ms) nie spełnia tego warunku. Dopuszczalne są krótkofalowe odchyłki,
+ale długofalowo średni odstęp czynności musi być zgodny ze specyfikacją.
+
+-----------------------------------------------------
+
+Na połączeniu klienta z serwerem obsługującym interfejs użytkownika powinien zostać wyłączony algorytm Nagle'a, aby zminimalizować opóźnienia transmisji.
+
+-----------------------------------------------------
+
+W przypadku otrzymania niepoprawnych argumentów linii komend, programy powinny
+wypisywać stosowny komunikat na standardowe wyjście błędów i zwracać kod 1.
+
+-----------------------------------------------------
+
+Należy przyjąć rozsądne ograniczenia na wartości parametrów,
+w szczególności rozsądne ograniczenie na maksymalny rozmiar planszy,
+rozsądne limity na wartości parametrów ROUNDS_PER_SEC i TURNING_SPEED,
+dopuszczać tylko dodatnie wartości parametru tam, gdzie zerowa lub ujemna wartość nie ma sensu.
+
+-----------------------------------------------------
+
+Nazwa gracza player_name nie kończy się znakiem o kodzie zero.
+
+W każdej nowej grze numerowanie zdarzeń rozpoczyna się od zera.
+
+-----------------------------------------------------
+
+Jeśli na przykład odbierzemy komunikat LEFT_KEY_DOWN bezpośrednio po komunikacie RIGHT_KEY_DOWN, to skręcamy w lewo. Generalnie uwzględniamy zawsze najnowszy komunikat.
+
+Protokół zabrania obsługi kilku graczy przez jednego klienta i nakazuje wysyłać w ramach jednej gry zawsze jednakową nazwę gracza.
+
+-----------------------------------------------------
+
+Patrz też:
+http://man7.org/linux/man-pages/man2/gettimeofday.2.html
+https://stackoverflow.com/questions/809902/64-bit-ntohl-in-c

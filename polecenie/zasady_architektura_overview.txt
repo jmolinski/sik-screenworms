@@ -1,0 +1,26 @@
+ZASADY GRY
+
+Gra rozgrywa się na prostokątnym ekranie.
+Uczestniczy w niej >= 2 graczy. Każdy z graczy steruje ruchem robaka.
+Robak je piksel, na którym się znajduje. Gra rozgrywa się w turach.
+W każdej turze robak może się przesunąć na inny piksel, pozostawiając ten, na którym był, całkowicie zjedzony.
+Robak porusza się w kierunku ustalonym przez gracza.
+Jeśli robak wejdzie na piksel właśnie jedzony lub już zjedzony albo wyjdzie poza ekran, to spada z ekranu, a gracz nim kierujący odpada z gry.
+Wygrywa ten gracz, którego robak pozostanie jako ostatni na ekranie.
+
+-----------------------------------------------------
+
+ARCHITEKTURA
+
+Serwer:
+- komunikuje się z klientami,
+- zarządza stanem gry,
+- odbiera od klientów informacje o wykonywanych ruchach,
+- rozsyła klientom zmiany stanu gry.
+
+Serwer pamięta wszystkie zdarzenia dla bieżącej partii i przesyła je w razie potrzeby klientom.
+
+Klient:
+- komunikuje się z serwerem gry,
+- komunikuje się z interfejsem użytkownika.
+Klient dba także o to, żeby interfejs użytkownika otrzymywał polecenia w kolejności zgodnej z przebiegiem partii oraz bez duplikatów.
