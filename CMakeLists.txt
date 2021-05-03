@@ -5,9 +5,13 @@ set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Werror -Wpedantic -O2 -std=c++17")
 set(CMAKE_CXX_STANDARD 17)
 
 add_executable(screen-worms-server
-        server_src/main.cc)
+        server_src/main.cpp
+        utils/getopt_wrapper.cpp
+        )
 
 add_executable(screen-worms-client
-        client_src/main.cc)
+        client_src/main.cpp
+        utils/getopt_wrapper.cpp
+        )
 
 install(TARGETS DESTINATION .)

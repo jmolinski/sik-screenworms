@@ -7,4 +7,5 @@
 // Do parsowania parametrów linii komend można użyć funkcji getopt z biblioteki standardowej: https://linux.die.net/man/3/getopt.
 
 int main(int argc, char *argv[]) {
+    return 0;
 }
