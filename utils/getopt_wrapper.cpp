@@ -14,20 +14,20 @@ namespace {
 } // namespace
 
 namespace utils {
-    std::unordered_map<char, std::string> parseOptParameters(int argc, char **argv,
-                                                             const std::string &accepted) {
+    std::unordered_map<char, std::string> parseOptParameters(int argc, char **argv, const std::string &accepted) {
         std::unordered_map<char, std::string> params;
         std::string getoptOptstring = ::interweaveWithColons(accepted);
 
         int c;
+        opterr = 0; // To silence error messages.
         while ((c = getopt(argc, argv, getoptOptstring.c_str())) != -1) {
             char optname = static_cast<char>(c);
+
             if (optname == '?') {
-                throw std::runtime_error("invalid parameter or missing value");
-            } else if (accepted.find(optname) == std::string::npos) {
-                throw std::runtime_error("unrecognized option " + std::string(1, optname));
+                throw std::runtime_error(std::string(1, static_cast<char>(optopt)) +
+                                         ": unrecognized parameter or missing value");
             } else if (params.find(optname) != params.end()) {
-                throw std::runtime_error("duplicate parameter " + std::string(1, optname));
+                throw std::runtime_error(std::string(1, optname) + ": duplicate parameter");
             } else {
                 params.insert({optname, std::string(optarg)});
             }

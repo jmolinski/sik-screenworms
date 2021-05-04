@@ -7,11 +7,13 @@ set(CMAKE_CXX_STANDARD 17)
 add_executable(screen-worms-server
         server_src/main.cpp
         utils/getopt_wrapper.cpp
+        utils/utils.cpp
         )
 
 add_executable(screen-worms-client
         client_src/main.cpp
         utils/getopt_wrapper.cpp
+        utils/utils.cpp
         )
 
 install(TARGETS DESTINATION .)
