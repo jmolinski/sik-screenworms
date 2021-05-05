@@ -21,8 +21,6 @@ struct ClientConfig {
     uint16_t guiPort;
     std::string gameServer;
 
-    // /screen-worms-client game_server [-n player_name] [-p n] [-i gui_server] [-r n]"
-
     ClientConfig(std::string gameServerParam, std::unordered_map<char, std::string> params)
         : serverPort{DEFAULT_SERVER_PORT}, guiServer{DEFAULT_GUI_SERVER}, guiPort{DEFAULT_GUI_PORT},
           gameServer{std::move(gameServerParam)} {
@@ -30,11 +28,9 @@ struct ClientConfig {
 
         if ((it = params.find('p')) != params.end()) {
             serverPort = utils::optionalParamValueToUint<uint16_t, MIN_PORT, MAX_PORT>(it);
-            params.erase(it);
         }
         if ((it = params.find('r')) != params.end()) {
             guiPort = utils::optionalParamValueToUint<uint16_t, MIN_PORT, MAX_PORT>(it);
-            params.erase(it);
         }
 
         if ((it = params.find('n')) != params.end()) {
@@ -42,7 +38,6 @@ struct ClientConfig {
             if (!utils::isValidPlayerName(playerName)) {
                 throw std::runtime_error("invalid player_name parameter value");
             }
-            params.erase(it);
         }
 
         if (!utils::isSyntacticallyValidHostAddress(gameServer)) {
@@ -53,11 +48,6 @@ struct ClientConfig {
             if (!utils::isSyntacticallyValidHostAddress(guiServer)) {
                 throw std::runtime_error("invalid gui_server parameter value");
             }
-            params.erase(it);
-        }
-
-        if (!params.empty()) {
-            throw std::runtime_error("unrecognized cmd options");
         }
     }
 };
@@ -65,10 +55,17 @@ struct ClientConfig {
 namespace {
     ClientConfig parseCmdParams(int argc, char *argv[]) {
         try {
-            if (argc < 2) {
+            std::unordered_map<char, std::string> params;
+            std::vector<std::string> positionalParameters;
+            utils::parseCmdParameters(argc, argv, "npir", params, positionalParameters);
+
+            if (positionalParameters.empty()) {
                 throw std::runtime_error("missing required game_server parameter");
+            } else if (positionalParameters.size() > 1) {
+                throw std::runtime_error("too many positional parameters passed");
             }
-            return ClientConfig(argv[1], utils::parseOptParameters(argc - 1, argv + 1, "npir"));
+
+            return ClientConfig(positionalParameters[0], params);
         } catch (const std::exception &e) {
             std::cerr << "ERROR: " << e.what() << '\n';
             std::cerr << "Usage: ./screen-worms-client game_server [-n player_name] [-p n] [-i gui_server] [-r n]"

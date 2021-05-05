@@ -34,31 +34,21 @@ struct ServerConfig {
 
         if ((it = params.find('p')) != params.end()) {
             port = utils::optionalParamValueToUint<uint16_t, MIN_PORT, MAX_PORT>(it);
-            params.erase(it);
         }
         if ((it = params.find('s')) != params.end()) {
             rngSeed = utils::optionalParamValueToUint<uint32_t, 0, std::numeric_limits<uint32_t>::max()>(it);
-            params.erase(it);
         }
         if ((it = params.find('t')) != params.end()) {
             turningSpeed = utils::optionalParamValueToUint<uint8_t, MIN_TURNING_SPEED, MAX_TURNING_SPEED>(it);
-            params.erase(it);
         }
         if ((it = params.find('v')) != params.end()) {
             roundsPerSec = utils::optionalParamValueToUint<uint8_t, MIN_ROUNDS_PER_SEC, MAX_ROUNDS_PER_SEC>(it);
-            params.erase(it);
         }
         if ((it = params.find('w')) != params.end()) {
             boardWidth = utils::optionalParamValueToUint<uint16_t, MIN_BOARD_DIM_SIZE, MAX_BOARD_DIM_SIZE>(it);
-            params.erase(it);
         }
         if ((it = params.find('h')) != params.end()) {
             boardHeight = utils::optionalParamValueToUint<uint16_t, MIN_BOARD_DIM_SIZE, MAX_BOARD_DIM_SIZE>(it);
-            params.erase(it);
-        }
-
-        if (!params.empty()) {
-            throw std::runtime_error("unrecognized cmd options");
         }
     }
 };
@@ -66,7 +56,15 @@ struct ServerConfig {
 namespace {
     ServerConfig parseCmdParams(int argc, char *argv[]) {
         try {
-            return ServerConfig(utils::parseOptParameters(argc, argv, "pstvwh"));
+            std::unordered_map<char, std::string> params;
+            std::vector<std::string> positionalParameters;
+            utils::parseCmdParameters(argc, argv, "pstvwh", params, positionalParameters);
+
+            if (!positionalParameters.empty()) {
+                throw std::runtime_error(positionalParameters[0] + ": unexpected positional parameter passed");
+            }
+
+            return ServerConfig(params);
         } catch (const std::exception &e) {
             std::cerr << "ERROR: " << e.what() << '\n';
             std::cerr << "Usage: ./screen-worms-server [-p n] [-s n] [-t n] [-v n] [-w n] [-h n]" << std::endl;
