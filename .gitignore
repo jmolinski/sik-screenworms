@@ -34,3 +34,8 @@
 .idea/
 cmake-build-debug/
 
+.depend
+screen-worms-client
+screen-worms-server
+
+codesize
