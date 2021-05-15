@@ -39,3 +39,6 @@ screen-worms-client
 screen-worms-server
 
 codesize
+
+client_src/talker.c
+server_src/listener.c
