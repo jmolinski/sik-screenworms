@@ -1,6 +1,8 @@
 #include "client.h"
 
-Client::Client(ClientConfig config) : config(config), serverSocket(config.serverPort) {
+#include <utility>
+
+Client::Client(ClientConfig conf) : config(std::move(conf)){
     // TODO pass server addr
 }
 

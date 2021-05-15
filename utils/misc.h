@@ -1,5 +1,5 @@
-#ifndef SIK_NETWORMS_UTILS_H
-#define SIK_NETWORMS_UTILS_H
+#ifndef SIK_NETWORMS_MISC_H
+#define SIK_NETWORMS_MISC_H
 
 #include <cstdint>
 #include <limits>
@@ -32,4 +32,4 @@ namespace utils {
     bool isSyntacticallyValidHostAddress(const std::string &s);
 } // namespace utils
 
-#endif // SIK_NETWORMS_UTILS_H
+#endif // SIK_NETWORMS_MISC_H
