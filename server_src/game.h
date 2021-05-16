@@ -5,21 +5,32 @@
 
 constexpr unsigned MAX_PLAYERS = 27;
 
-class GameManager {
-  public:
-    void runTurn() {
-        std::cerr << "alarm" << std::endl;
-    }
-};
-
-class Game {};
-
 class MQManager {
   public:
     void schedule() {
     }
     bool isEmpty() {
         return true;
+    }
+};
+
+struct Player {
+    uint64_t sessionId;
+    uint8_t turnDirection;
+    uint32_t nextExpectedEventNo;
+    std::string playerName;
+
+    bool isWatcher() const {
+        return playerName.empty();
+    };
+};
+
+class Game {};
+
+class GameManager {
+  public:
+    void runTurn() {
+        std::cerr << "alarm" << std::endl;
     }
 };
 

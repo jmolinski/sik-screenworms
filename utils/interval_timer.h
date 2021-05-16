@@ -3,6 +3,7 @@
 
 using timer_fd_t = int;
 constexpr long NS_IN_SECOND = 1'000'000'000;
+constexpr long NS_IN_MS = 1'000'000;
 
 namespace utils {
     timer_fd_t createArmedTimer(long intervalMs);

@@ -8,6 +8,10 @@
 #include <string>
 #include <unordered_map>
 
+namespace config {
+    constexpr unsigned MAX_PLAYER_NAME_LENGTH = 20;
+}
+
 namespace utils {
     uint64_t strToU64(const std::string &s);
 
@@ -29,7 +33,6 @@ namespace utils {
     }
 
     bool isValidPlayerName(const std::string &s);
-    bool isSyntacticallyValidHostAddress(const std::string &s);
 } // namespace utils
 
 #endif // SIK_NETWORMS_MISC_H

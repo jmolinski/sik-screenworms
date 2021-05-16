@@ -2,7 +2,6 @@
 #include <algorithm>
 
 namespace {
-    constexpr unsigned MAX_PLAYER_NAME_LENGTH = 20;
     constexpr char MIN_PLAYER_NAME_CHAR = 33;
     constexpr char MAX_PLAYER_NAME_CHAR = 126;
 
@@ -28,7 +27,7 @@ namespace utils {
     }
 
     bool isValidPlayerName(const std::string &s) {
-        if (s.size() > MAX_PLAYER_NAME_LENGTH) {
+        if (s.size() > config::MAX_PLAYER_NAME_LENGTH) {
             return false;
         }
 
@@ -38,10 +37,5 @@ namespace utils {
             }
         }
         return true;
-    }
-
-    bool isSyntacticallyValidHostAddress(const std::string &s) {
-        // TODO walidacja adresów ipv4/ipv6/aliasów?
-        return !s.empty();
     }
 } // namespace utils

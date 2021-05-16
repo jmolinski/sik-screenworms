@@ -1,4 +1,5 @@
 #include "udp_socket.h"
+#include "fingerprint.h"
 #include <iostream>
 #include <unistd.h>
 
@@ -51,11 +52,14 @@ UdpSocket::UdpSocket(addrinfo addrInfo, const std::string &hostname, uint16_t po
         exit(EXIT_FAILURE);
     }
 
+    std::cout << "Successfully created socket: " << fingerprintNetuser(info.ai_addr) << std::endl;
+
     freeaddrinfo(servinfo);
 }
 
 UdpSocket::~UdpSocket() {
     if (fd != -1) {
+        std::cout << "Closing UDP socket" << std::endl;
         close(fd);
     }
 }

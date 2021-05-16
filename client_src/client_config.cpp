@@ -28,13 +28,7 @@ ClientConfig::ClientConfig(const std::string &server, std::unordered_map<char, s
         }
     }
 
-    if (!utils::isSyntacticallyValidHostAddress(gameServer)) {
-        throw std::runtime_error("invalid game_server parameter value");
-    }
     if ((it = params.find('i')) != params.end()) {
         guiServer = it->second;
-        if (!utils::isSyntacticallyValidHostAddress(guiServer)) {
-            throw std::runtime_error("invalid gui_server parameter value");
-        }
     }
 }

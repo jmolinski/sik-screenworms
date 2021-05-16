@@ -15,6 +15,8 @@ add_executable(screen-worms-server
         server_src/server.cpp
         server_src/game.cpp
         server_src/server_config.cpp
+        utils/messages.cpp
+        utils/fingerprint.cpp
         )
 
 add_executable(screen-worms-client
@@ -25,6 +27,8 @@ add_executable(screen-worms-client
         utils/interval_timer.cpp
         client_src/client_config.cpp
         client_src/client.cpp
+        utils/messages.cpp
+        utils/fingerprint.cpp
         )
 
 install(TARGETS DESTINATION .)
