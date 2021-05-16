@@ -1,14 +1,12 @@
 #include "messages.h"
 #include <cstring>
 #include <endian.h>
+#include <iostream>
 
 template <typename T>
 static inline T binaryToNum(const unsigned char *buff) {
-    T num = 0;
-    for (size_t i = 0; i < sizeof(T); i++) {
-        num <<= 8;
-        num |= buff[i];
-    }
+    T num;
+    memcpy(&num, buff, sizeof(T));
     return num;
 }
 
@@ -18,6 +16,14 @@ static inline void numToBinary(T num, unsigned char *buff) {
     for (size_t i = 0; i < sizeof(T); i++) {
         buff[i] = numBPtr[i];
     }
+}
+
+ClientToServerMessage::ClientToServerMessage(uint64_t sessionIdP, TurnDirection direction, uint32_t eventNo,
+                                             const std::string &playerNameP)
+    : sessionId(sessionIdP), turnDirection(direction), nextExpectedEventNo(eventNo) {
+    playerNameSize = playerNameP.size();
+    memset(playerName, 0, sizeof playerName);
+    memcpy(playerName, playerNameP.c_str(), playerNameSize);
 }
 
 ClientToServerMessage::ClientToServerMessage(const unsigned char *buffer, size_t size) {
@@ -38,8 +44,8 @@ ClientToServerMessage::ClientToServerMessage(const unsigned char *buffer, size_t
 
 size_t ClientToServerMessage::encode(unsigned char *buffer) {
     numToBinary(htobe64(sessionId), buffer);
-    numToBinary(turnDirection, buffer);
-    numToBinary(htobe32(nextExpectedEventNo), buffer);
+    numToBinary(turnDirection, buffer + 8);
+    numToBinary(htobe32(nextExpectedEventNo), buffer + 9);
     memcpy(buffer + min_struct_size, playerName, playerNameSize);
     return min_struct_size + playerNameSize;
 }

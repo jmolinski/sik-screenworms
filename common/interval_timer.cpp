@@ -34,4 +34,13 @@ namespace utils {
 
         return timerFd;
     }
+
+    time_stamp_t getCurrentTimestamp() {
+        return std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
+    }
+
+    uint64_t timestampToUll(time_stamp_t ts) {
+        return static_cast<uint64_t>(
+            std::chrono::duration_cast<std::chrono::microseconds>(ts.time_since_epoch()).count());
+    }
 } // namespace utils

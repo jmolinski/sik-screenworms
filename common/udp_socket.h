@@ -15,8 +15,13 @@ class UdpSocket {
     UdpSocket();
     explicit UdpSocket(addrinfo addrInfo, const std::string &hostname, uint16_t portNum, bool doBind = false);
     ~UdpSocket();
+
     [[nodiscard]] socket_fd_t getFd() const {
         return fd;
+    }
+
+    [[nodiscard]] addrinfo getAddrInfo() const {
+        return info;
     }
 };
 

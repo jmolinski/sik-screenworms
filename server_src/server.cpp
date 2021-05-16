@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 constexpr int POLL_TIMEOUT = 10;
+constexpr unsigned PFDS_COUNT = 2; // TODO add 2s expiration timer
 constexpr unsigned TIMER_PFDS_IDX = 0;
 constexpr unsigned SOCKET_PFDS_IDX = 1;
 constexpr size_t INCOMING_MSG_BUFFER_SIZE = 100;
@@ -36,6 +37,10 @@ void Server::readMessageFromClient() {
 
     try {
         ClientToServerMessage m(buf, static_cast<size_t>(numbytes));
+
+        std::cerr << "DEBUG MSG: sessionid " << m.sessionId << " turn "
+                  << (uint32_t) static_cast<uint8_t>(m.turnDirection) << " eventNo " << m.nextExpectedEventNo
+                  << " pname " << m.playerName << std::endl;
         // TODO do something with the message
     } catch (...) {
         std::cerr << "Error in client message decoding. Skipping this datagram processing." << std::endl;
@@ -50,14 +55,14 @@ void Server::sendMessageToClient() {
 [[noreturn]] void Server::run() {
     std::cout << "Starting server main loop." << std::endl;
 
-    struct pollfd pfds[2];
+    struct pollfd pfds[PFDS_COUNT];
     pfds[TIMER_PFDS_IDX].fd = timerFd;
     pfds[TIMER_PFDS_IDX].events = POLLIN;
     pfds[SOCKET_PFDS_IDX].fd = sock.getFd();
     pfds[SOCKET_PFDS_IDX].events = POLLIN;
 
     while (true) {
-        int numEvents = poll(pfds, 2, POLL_TIMEOUT);
+        int numEvents = poll(pfds, PFDS_COUNT, POLL_TIMEOUT);
         if (numEvents == -1) {
             perror(nullptr);
         } else if (numEvents == 0) {

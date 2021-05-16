@@ -52,7 +52,9 @@ UdpSocket::UdpSocket(addrinfo addrInfo, const std::string &hostname, uint16_t po
         exit(EXIT_FAILURE);
     }
 
-    std::cout << "Successfully created socket: " << fingerprintNetuser(info.ai_addr) << std::endl;
+    if (doBind) {
+        std::cout << "Successfully created socket: " << fingerprintNetuser(info.ai_addr) << std::endl;
+    }
 
     freeaddrinfo(servinfo);
 }

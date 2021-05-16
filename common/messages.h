@@ -3,6 +3,7 @@
 
 #include "misc.h"
 #include <exception>
+#include <string>
 
 class EncoderDecoderError : public std::exception {};
 
@@ -17,6 +18,7 @@ struct ClientToServerMessage {
     char playerName[config::MAX_PLAYER_NAME_LENGTH + 1];
     size_t playerNameSize;
 
+    ClientToServerMessage(uint64_t, TurnDirection, uint32_t, const std::string &);
     ClientToServerMessage(const unsigned char *buffer, size_t size);
     size_t encode(unsigned char *buffer);
 };
