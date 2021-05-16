@@ -1,6 +1,6 @@
 #include "server.h"
-#include "../utils/fingerprint.h"
-#include "../utils/messages.h"
+#include "../common/fingerprint.h"
+#include "../common/messages.h"
 #include <iostream>
 #include <poll.h>
 #include <unistd.h>

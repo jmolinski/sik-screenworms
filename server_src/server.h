@@ -1,8 +1,8 @@
 #ifndef SIK_NETWORMS_SERVER_H
 #define SIK_NETWORMS_SERVER_H
 
-#include "../utils/interval_timer.h"
-#include "../utils/udp_socket.h"
+#include "../common/interval_timer.h"
+#include "../common/udp_socket.h"
 #include "server_config.h"
 #include "game.h"
 

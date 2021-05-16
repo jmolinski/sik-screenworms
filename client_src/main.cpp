@@ -1,4 +1,4 @@
-#include "../utils/getopt_wrapper.h"
+#include "../common/getopt_wrapper.h"
 #include "client.h"
 #include "client_config.h"
 #include <exception>

@@ -1,5 +1,5 @@
 #include "server_config.h"
-#include "../utils/misc.h"
+#include "../common/misc.h"
 
 namespace {
     constexpr uint16_t DEFAULT_PORT = 2021;

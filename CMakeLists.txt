@@ -8,27 +8,27 @@ set(CMAKE_CXX_STANDARD 17)
 
 add_executable(screen-worms-server
         server_src/main.cpp
-        utils/getopt_wrapper.cpp
-        utils/misc.cpp
-        utils/udp_socket.cpp
-        utils/interval_timer.cpp
+        common/getopt_wrapper.cpp
+        common/misc.cpp
+        common/udp_socket.cpp
+        common/interval_timer.cpp
         server_src/server.cpp
         server_src/game.cpp
         server_src/server_config.cpp
-        utils/messages.cpp
-        utils/fingerprint.cpp
+        common/messages.cpp
+        common/fingerprint.cpp
         )
 
 add_executable(screen-worms-client
         client_src/main.cpp
-        utils/getopt_wrapper.cpp
-        utils/misc.cpp
-        utils/udp_socket.cpp
-        utils/interval_timer.cpp
+        common/getopt_wrapper.cpp
+        common/misc.cpp
+        common/udp_socket.cpp
+        common/interval_timer.cpp
         client_src/client_config.cpp
         client_src/client.cpp
-        utils/messages.cpp
-        utils/fingerprint.cpp
+        common/messages.cpp
+        common/fingerprint.cpp
         )
 
 install(TARGETS DESTINATION .)
