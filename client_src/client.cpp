@@ -2,7 +2,7 @@
 
 #include <utility>
 
-Client::Client(ClientConfig conf) : config(std::move(conf)){
+Client::Client(ClientConfig conf) : config(std::move(conf)) {
     // TODO pass server addr
 }
 

@@ -25,7 +25,6 @@ add_executable(screen-worms-client
         utils/interval_timer.cpp
         client_src/client_config.cpp
         client_src/client.cpp
-
         )
 
 install(TARGETS DESTINATION .)

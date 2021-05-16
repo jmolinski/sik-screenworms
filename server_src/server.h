@@ -4,17 +4,22 @@
 #include "../utils/interval_timer.h"
 #include "../utils/udp_socket.h"
 #include "server_config.h"
+#include "game.h"
 
 class Server {
     ServerConfig config;
     UdpSocket socket;
     timer_fd_t timerFd;
+    GameManager gameManager;
+    MQManager mqManager;
 
   public:
     explicit Server(ServerConfig config);
-    ~Server();
+    [[noreturn]] void run();
 
-    void run();
+  private:
+    void readMessageFromClient();
+    void sendMessageToClient();
 };
 
 #endif // SIK_NETWORMS_SERVER_H
