@@ -1,7 +1,5 @@
 #include "../common/getopt_wrapper.h"
 #include "client.h"
-#include "client_config.h"
-#include <exception>
 #include <iostream>
 
 namespace {

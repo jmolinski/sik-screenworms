@@ -1,7 +1,6 @@
 #include "../common/getopt_wrapper.h"
 #include "server.h"
 #include <iostream>
-#include <stdexcept>
 
 namespace {
     ServerConfig parseCmdParams(int argc, char *argv[]) {

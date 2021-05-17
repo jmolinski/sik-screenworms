@@ -6,18 +6,19 @@
 #include <unistd.h>
 
 constexpr int POLL_TIMEOUT = 10;
-constexpr unsigned PFDS_COUNT = 2; // TODO add 2s expiration timer
-constexpr unsigned TIMER_PFDS_IDX = 0;
-constexpr unsigned SOCKET_PFDS_IDX = 1;
+constexpr unsigned PFDS_COUNT = 3;
+constexpr unsigned TURN_TIMER_PFDS_IDX = 0;
+constexpr unsigned EXPIRATION_TIMER_PFDS_IDX = 1;
+constexpr unsigned SOCKET_PFDS_IDX = 2;
 constexpr size_t INCOMING_MSG_BUFFER_SIZE = 100;
+constexpr unsigned CONNECTION_EXPIRATION_TIME_SEC = 2;
 
 Server::Server(ServerConfig parsedConfig)
     : config(parsedConfig),
       sock(addrinfo{AI_PASSIVE, AF_INET6, SOCK_DGRAM, 0, 0, nullptr, nullptr, nullptr}, "", config.port, true),
       gameManager(config.rngSeed) {
-    timerFd = utils::createArmedTimer(10 * NS_IN_SECOND); // TODO ustawienie tury
-
-    // TODO create mq
+    turnTimerFd = utils::createArmedTimer(10 * NS_IN_SECOND); // TODO ustawienie tury
+    expirationTimerFd = utils::createArmedTimer(CONNECTION_EXPIRATION_TIME_SEC * NS_IN_SECOND);
 }
 
 void Server::readMessageFromClient() {
@@ -46,15 +47,21 @@ void Server::readMessageFromClient() {
 }
 
 void Server::sendMessageToClient() {
-    std::cerr << "Data can be written (i'm scared)" << std::endl;
+    std::cerr << "Data can be written (i'm scared)" << std::endl; // TODO
+}
+
+void Server::cleanupObsoleteConnections() {
+    std::cerr << "conn cleanup" << std::endl; // TODO
 }
 
 [[noreturn]] void Server::run() {
     std::cout << "Starting server main loop." << std::endl;
 
     pollfd pfds[PFDS_COUNT];
-    pfds[TIMER_PFDS_IDX].fd = timerFd;
-    pfds[TIMER_PFDS_IDX].events = POLLIN;
+    pfds[TURN_TIMER_PFDS_IDX].fd = turnTimerFd;
+    pfds[TURN_TIMER_PFDS_IDX].events = POLLIN;
+    pfds[EXPIRATION_TIMER_PFDS_IDX].fd = expirationTimerFd;
+    pfds[EXPIRATION_TIMER_PFDS_IDX].events = POLLIN;
     pfds[SOCKET_PFDS_IDX].fd = sock.getFd();
     pfds[SOCKET_PFDS_IDX].events = POLLIN;
 
@@ -66,12 +73,18 @@ void Server::sendMessageToClient() {
             continue;
         }
 
-        if (pfds[TIMER_PFDS_IDX].revents & POLLIN) {
-            uint64_t exp;
-            if (read(timerFd, &exp, sizeof(uint64_t)) != sizeof(uint64_t)) {
-                std::cerr << "Timer read: problem reading expirations count" << std::endl;
+        uint64_t exp;
+        if (pfds[TURN_TIMER_PFDS_IDX].revents & POLLIN) {
+            if (read(turnTimerFd, &exp, sizeof(uint64_t)) != sizeof(uint64_t)) {
+                std::cerr << "Timer read: problem reading turn timer" << std::endl;
             } else {
                 gameManager.runTurn();
+            }
+        } else if (pfds[EXPIRATION_TIMER_PFDS_IDX].revents & POLLIN) {
+            if (read(expirationTimerFd, &exp, sizeof(uint64_t)) != sizeof(uint64_t)) {
+                std::cerr << "Timer read: problem reading conenction expiration timer" << std::endl;
+            } else {
+                cleanupObsoleteConnections();
             }
         } else {
             if (pfds[SOCKET_PFDS_IDX].revents & POLLIN) {

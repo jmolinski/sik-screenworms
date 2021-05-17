@@ -3,14 +3,12 @@
 #include <iostream>
 #include <poll.h>
 #include <unistd.h>
-#include <utility>
 
 constexpr int POLL_TIMEOUT = 10;
 constexpr unsigned PFDS_COUNT = 2;
 constexpr unsigned TIMER_PFDS_IDX = 0;
 constexpr unsigned SERVER_SOCK_PFDS_IDX = 1;
 constexpr unsigned long MSG_TO_SERVER_INTERVAL_MS = 5'000; // TODO ustawienie interwału 30 ms
-constexpr size_t MSG_TO_SERVER_BUFFER_SIZE = 50;
 
 Client::Client(ClientConfig conf)
     : config(std::move(conf)), serverSock(addrinfo{0, AF_INET6, SOCK_DGRAM, 0, 0, nullptr, nullptr, nullptr},

@@ -4,6 +4,10 @@
 #include <arpa/inet.h>
 #include <string>
 
-std::string fingerprintNetuser(const sockaddr * addr);
+namespace utils {
+    using fingerprint_t = std::string;
+
+    fingerprint_t fingerprintNetuser(const sockaddr *addr);
+} // namespace utils
 
 #endif // SIK_NETWORMS_FINGERPRINT_H

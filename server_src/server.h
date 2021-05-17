@@ -9,7 +9,8 @@
 class Server {
     ServerConfig config;
     UdpSocket sock;
-    timer_fd_t timerFd;
+    timer_fd_t turnTimerFd;
+    timer_fd_t expirationTimerFd;
     GameManager gameManager;
     MQManager mqManager;
 

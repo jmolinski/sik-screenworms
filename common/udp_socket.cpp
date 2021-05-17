@@ -3,9 +3,6 @@
 #include <iostream>
 #include <unistd.h>
 
-UdpSocket::UdpSocket() : fd{-1}, info{0, 0, 0, 0, 0, nullptr, nullptr, nullptr} {
-}
-
 UdpSocket::UdpSocket(addrinfo addrInfo, const std::string &hostname, uint16_t portNum, bool doBind) {
     addrinfo *servinfo;
     std::string port = std::to_string(portNum);
@@ -53,7 +50,7 @@ UdpSocket::UdpSocket(addrinfo addrInfo, const std::string &hostname, uint16_t po
     }
 
     if (doBind) {
-        std::cout << "Successfully created socket: " << fingerprintNetuser(info.ai_addr) << std::endl;
+        std::cout << "Successfully created socket: " << utils::fingerprintNetuser(info.ai_addr) << std::endl;
     }
 
     freeaddrinfo(servinfo);
