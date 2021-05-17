@@ -9,6 +9,8 @@ class EncoderDecoderError : public std::exception {};
 
 enum struct TurnDirection : uint8_t { straight = 0, right = 1, left = 2 };
 
+enum struct EventType : uint8_t { new_game = 0, pixel = 1, player_eliminated = 2, game_over = 3 };
+
 struct ClientToServerMessage {
     static constexpr size_t min_struct_size = 13, max_struct_size = 33;
 

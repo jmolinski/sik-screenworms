@@ -1,7 +1,8 @@
 #ifndef SIK_NETWORMS_GAME_H
 #define SIK_NETWORMS_GAME_H
 
-#include <iostream>
+#include "../common/messages.h"
+#include "rng.h"
 
 constexpr unsigned MAX_PLAYERS = 27;
 
@@ -28,10 +29,12 @@ struct Player {
 class Game {};
 
 class GameManager {
+    RNG rng;
+
   public:
-    void runTurn() {
-        std::cerr << "alarm" << std::endl;
-    }
+    explicit GameManager(uint32_t rngSeed);
+    void runTurn();
+    void handleMessage(const std::string &fingerprint, ClientToServerMessage msg);
 };
 
 #endif // SIK_NETWORMS_GAME_H

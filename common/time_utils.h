@@ -1,5 +1,5 @@
-#ifndef SIK_NETWORMS_INTERVAL_TIMER_H
-#define SIK_NETWORMS_INTERVAL_TIMER_H
+#ifndef SIK_NETWORMS_TIME_UTILS_H
+#define SIK_NETWORMS_TIME_UTILS_H
 
 #include <chrono>
 
@@ -16,4 +16,4 @@ namespace utils {
     uint64_t timestampToUll(time_stamp_t ts);
 } // namespace utils
 
-#endif // SIK_NETWORMS_INTERVAL_TIMER_H
+#endif // SIK_NETWORMS_TIME_UTILS_H

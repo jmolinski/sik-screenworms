@@ -11,12 +11,14 @@ add_executable(screen-worms-server
         common/getopt_wrapper.cpp
         common/misc.cpp
         common/udp_socket.cpp
-        common/interval_timer.cpp
+        common/time_utils.cpp
         server_src/server.cpp
         server_src/game.cpp
         server_src/server_config.cpp
         common/messages.cpp
         common/fingerprint.cpp
+        common/crc32.cpp
+        server_src/rng.h
         )
 
 add_executable(screen-worms-client
@@ -24,11 +26,13 @@ add_executable(screen-worms-client
         common/getopt_wrapper.cpp
         common/misc.cpp
         common/udp_socket.cpp
-        common/interval_timer.cpp
+        common/time_utils.cpp
         client_src/client_config.cpp
         client_src/client.cpp
         common/messages.cpp
         common/fingerprint.cpp
+        common/crc32.cpp
+        server_src/rng.h
         )
 
 install(TARGETS DESTINATION .)

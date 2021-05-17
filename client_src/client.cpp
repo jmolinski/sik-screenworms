@@ -50,7 +50,7 @@ void Client::enqueueMessageToServer() {
 [[noreturn]] void Client::run() {
     std::cout << "Starting client main loop." << std::endl;
 
-    struct pollfd pfds[PFDS_COUNT]; // TODO add GUI sock fd
+    pollfd pfds[PFDS_COUNT]; // TODO add GUI sock fd
     pfds[TIMER_PFDS_IDX].fd = timerFd;
     pfds[TIMER_PFDS_IDX].events = POLLIN;
     pfds[SERVER_SOCK_PFDS_IDX].fd = serverSock.getFd();

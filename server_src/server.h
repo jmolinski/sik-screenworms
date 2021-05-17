@@ -1,10 +1,10 @@
 #ifndef SIK_NETWORMS_SERVER_H
 #define SIK_NETWORMS_SERVER_H
 
-#include "../common/interval_timer.h"
+#include "../common/time_utils.h"
 #include "../common/udp_socket.h"
-#include "server_config.h"
 #include "game.h"
+#include "server_config.h"
 
 class Server {
     ServerConfig config;

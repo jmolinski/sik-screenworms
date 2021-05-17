@@ -13,10 +13,11 @@ constexpr size_t INCOMING_MSG_BUFFER_SIZE = 100;
 
 Server::Server(ServerConfig parsedConfig)
     : config(parsedConfig),
-      sock(addrinfo{AI_PASSIVE, AF_INET6, SOCK_DGRAM, 0, 0, nullptr, nullptr, nullptr}, "", config.port, true) {
+      sock(addrinfo{AI_PASSIVE, AF_INET6, SOCK_DGRAM, 0, 0, nullptr, nullptr, nullptr}, "", config.port, true),
+      gameManager(config.rngSeed) {
     timerFd = utils::createArmedTimer(10 * NS_IN_SECOND); // TODO ustawienie tury
 
-    // TODO create game controller, create mq
+    // TODO create mq
 }
 
 void Server::readMessageFromClient() {
@@ -37,12 +38,8 @@ void Server::readMessageFromClient() {
 
     try {
         ClientToServerMessage m(buf, static_cast<size_t>(numbytes));
-
-        std::cerr << "DEBUG MSG: sessionid " << m.sessionId << " turn "
-                  << (uint32_t) static_cast<uint8_t>(m.turnDirection) << " eventNo " << m.nextExpectedEventNo
-                  << " pname " << m.playerName << std::endl;
-        // TODO do something with the message
-    } catch (...) {
+        gameManager.handleMessage(fingerprint, m);
+    } catch (const EncoderDecoderError &e) {
         std::cerr << "Error in client message decoding. Skipping this datagram processing." << std::endl;
         return;
     }
@@ -55,7 +52,7 @@ void Server::sendMessageToClient() {
 [[noreturn]] void Server::run() {
     std::cout << "Starting server main loop." << std::endl;
 
-    struct pollfd pfds[PFDS_COUNT];
+    pollfd pfds[PFDS_COUNT];
     pfds[TIMER_PFDS_IDX].fd = timerFd;
     pfds[TIMER_PFDS_IDX].events = POLLIN;
     pfds[SOCKET_PFDS_IDX].fd = sock.getFd();
