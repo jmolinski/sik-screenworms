@@ -1,6 +1,4 @@
 #include "server.h"
-#include "../common/fingerprint.h"
-#include "../common/messages.h"
 #include <iostream>
 #include <poll.h>
 #include <unistd.h>
@@ -16,7 +14,7 @@ constexpr unsigned CONNECTION_EXPIRATION_TIME_SEC = 2;
 Server::Server(ServerConfig parsedConfig)
     : config(parsedConfig),
       sock(addrinfo{AI_PASSIVE, AF_INET6, SOCK_DGRAM, 0, 0, nullptr, nullptr, nullptr}, "", config.port, true),
-      gameManager(config.rngSeed) {
+      gameManager(config.rngSeed, config.turningSpeed, config.boardWidth, config.boardHeight) {
     turnTimerFd = utils::createArmedTimer(10 * NS_IN_SECOND); // TODO ustawienie tury
     expirationTimerFd = utils::createArmedTimer(CONNECTION_EXPIRATION_TIME_SEC * NS_IN_SECOND);
 }
@@ -34,7 +32,11 @@ void Server::readMessageFromClient() {
         return;
     }
 
-    std::string fingerprint = fingerprintNetuser((sockaddr *)&their_addr);
+    std::string fingerprint = utils::fingerprintNetuser((sockaddr *)&their_addr);
+    lastCommunicationTs.insert_or_assign(fingerprint, utils::getCurrentTimestamp());
+    if (clientAddrs.find(fingerprint) == clientAddrs.end()) {
+        // TODO add addr to map
+    }
     std::cout << "DEBUG got packet from " << fingerprint << std::endl;
 
     try {
@@ -90,13 +92,13 @@ void Server::cleanupObsoleteConnections() {
             if (pfds[SOCKET_PFDS_IDX].revents & POLLIN) {
                 readMessageFromClient();
             }
-            if (!mqManager.isEmpty() && pfds[SOCKET_PFDS_IDX].revents & POLLOUT) {
+            if (!gameManager.mqManager.isEmpty() && pfds[SOCKET_PFDS_IDX].revents & POLLOUT) {
                 sendMessageToClient();
             }
         }
 
         pfds[SOCKET_PFDS_IDX].events = POLLIN;
-        if (!mqManager.isEmpty()) {
+        if (!gameManager.mqManager.isEmpty()) {
             pfds[SOCKET_PFDS_IDX].events |= POLLOUT;
         }
     }

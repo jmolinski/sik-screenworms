@@ -3,8 +3,10 @@
 
 #include "../common/time_utils.h"
 #include "../common/udp_socket.h"
+#include "../common/fingerprint.h"
 #include "game.h"
 #include "server_config.h"
+#include <unordered_map>
 
 class Server {
     ServerConfig config;
@@ -12,7 +14,9 @@ class Server {
     timer_fd_t turnTimerFd;
     timer_fd_t expirationTimerFd;
     GameManager gameManager;
-    MQManager mqManager;
+
+    std::unordered_map<utils::fingerprint_t, addrinfo> clientAddrs;
+    std::unordered_map<utils::fingerprint_t, utils::time_stamp_t> lastCommunicationTs;
 
   public:
     explicit Server(ServerConfig config);
@@ -21,6 +25,7 @@ class Server {
   private:
     void readMessageFromClient();
     void sendMessageToClient();
+    void cleanupObsoleteConnections();
 };
 
 #endif // SIK_NETWORMS_SERVER_H
