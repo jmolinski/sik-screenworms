@@ -31,8 +31,7 @@ namespace utils {
         uint32_t crc32Value = 0xFFFFFFFF;
 
         for (size_t i = 0; i < len; i++) {
-            uint8_t nLookupIndex = (crc32Value ^ data[i]) & 0xFF;
-            crc32Value = (crc32Value >> 8) ^ ::crc2_table[nLookupIndex];
+            crc32Value = (crc32Value >> 8) ^ ::crc2_table[(crc32Value ^ data[i]) & 0xFF];
         }
 
         crc32Value ^= 0xFFFFFFFF;

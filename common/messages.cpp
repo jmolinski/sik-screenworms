@@ -1,6 +1,5 @@
 #include "messages.h"
 #include <cstring>
-#include <endian.h>
 #include <iostream>
 
 template <typename T>

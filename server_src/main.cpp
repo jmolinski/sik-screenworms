@@ -24,6 +24,4 @@ namespace {
 
 int main(int argc, char *argv[]) {
     Server(::parseCmdParams(argc, argv)).run();
-
-    return 0;
 }

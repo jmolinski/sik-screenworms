@@ -13,7 +13,7 @@ add_executable(screen-worms-server
         server_src/main.cpp
         common/getopt_wrapper.cpp
         common/misc.cpp
-        common/udp_socket.cpp
+        common/sockets.cpp
         common/time_utils.cpp
         server_src/server.cpp
         server_src/game.cpp
@@ -28,7 +28,7 @@ add_executable(screen-worms-client
         client_src/main.cpp
         common/getopt_wrapper.cpp
         common/misc.cpp
-        common/udp_socket.cpp
+        common/sockets.cpp
         common/time_utils.cpp
         client_src/client_config.cpp
         client_src/client.cpp

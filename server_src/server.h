@@ -1,9 +1,9 @@
 #ifndef SIK_NETWORMS_SERVER_H
 #define SIK_NETWORMS_SERVER_H
 
-#include "../common/time_utils.h"
-#include "../common/udp_socket.h"
 #include "../common/fingerprint.h"
+#include "../common/sockets.h"
+#include "../common/time_utils.h"
 #include "game.h"
 #include "server_config.h"
 #include <unordered_map>

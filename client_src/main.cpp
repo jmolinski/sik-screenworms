@@ -1,6 +1,7 @@
 #include "../common/getopt_wrapper.h"
 #include "client.h"
 #include <iostream>
+#include <csignal>
 
 namespace {
     ClientConfig parseCmdParams(int argc, char *argv[]) {
@@ -26,7 +27,7 @@ namespace {
 } // namespace
 
 int main(int argc, char *argv[]) {
-    Client(::parseCmdParams(argc, argv)).run();
+    signal(SIGPIPE, SIG_IGN);
 
-    return 0;
+    Client(::parseCmdParams(argc, argv)).run();
 }
