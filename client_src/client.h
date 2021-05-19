@@ -44,6 +44,7 @@ class Client {
     void readMessageFromServer();
     void enqueueMessageToServer();
     void sendMessageToServer();
+    void readUpdateFromGui();
 };
 
 #endif // SIK_NETWORMS_CLIENT_H

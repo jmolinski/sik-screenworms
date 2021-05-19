@@ -27,7 +27,7 @@ namespace utils {
     }
 
     bool isValidPlayerName(const std::string &s) {
-        if (s.size() > config::MAX_PLAYER_NAME_LENGTH) {
+        if (s.size() > MAX_PLAYER_NAME_LENGTH) {
             return false;
         }
 

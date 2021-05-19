@@ -66,6 +66,13 @@ UdpSocket::~UdpSocket() {
     }
 }
 
+void UdpSocket::connectPeer(const addrinfo &peer) {
+    if (connect(fd, peer.ai_addr, peer.ai_addrlen) < 0) {
+        perror("connect on UDP socket failed");
+        exit(EXIT_FAILURE);
+    }
+}
+
 TcpSocket::TcpSocket(addrinfo addrInfo, const std::string &hostname, uint16_t portNum) {
     addrinfo *servinfo;
     std::string port = std::to_string(portNum);

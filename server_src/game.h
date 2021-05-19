@@ -8,16 +8,19 @@
 #include <set>
 #include <vector>
 
-constexpr unsigned MAX_PLAYERS = 27;
-
 struct ClientOutgoingMsgQueue {
     uint32_t nextExpectedEventNo;
 };
 
 class MQManager {
+    uint32_t currentGameId;
     std::map<utils::fingerprint_t, ClientOutgoingMsgQueue> queues;
 
   public:
+    void setGameId(uint32_t gameId) {
+        currentGameId = gameId;
+    }
+
     bool isEmpty() {
         // TODO
         return true;
@@ -65,8 +68,6 @@ struct Player {
     bool isDisconnected;
     bool isEliminated;
 };
-
-struct Event {};
 
 class GameManager {
     uint32_t gameId;

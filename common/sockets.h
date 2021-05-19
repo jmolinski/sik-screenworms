@@ -16,6 +16,8 @@ class UdpSocket {
     UdpSocket(addrinfo addrInfo, const std::string &hostname, uint16_t portNum, bool doBind = false);
     ~UdpSocket();
 
+    void connectPeer(const addrinfo &peer);
+
     [[nodiscard]] socket_fd_t getFd() const {
         return fd;
     }
