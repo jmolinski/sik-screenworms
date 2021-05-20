@@ -42,16 +42,18 @@ struct EventNewGame {
         return sizeof(maxx) + sizeof(maxy) + playersFieldSize;
     }
 
+    std::unordered_map<uint8_t, std::string> parsedPlayers() const;
+
     EventNewGame(const unsigned char *buff, uint32_t size);
     uint32_t encode(unsigned char *buff) const;
 };
 
 struct EventPixel {
-    uint8_t playeNumber;
+    uint8_t playerNumber;
     uint32_t x, y;
 
     uint32_t getSize() const {
-        return sizeof(x) + sizeof(y) + sizeof(playeNumber);
+        return sizeof(x) + sizeof(y) + sizeof(playerNumber);
     }
 
     EventPixel(const unsigned char *buff, size_t size);
@@ -59,22 +61,21 @@ struct EventPixel {
 };
 
 struct EventPlayerEliminated {
-    uint8_t player_number;
+    uint8_t playerNumber;
 
     uint32_t getSize() const {
-        return sizeof(player_number);
+        return sizeof(playerNumber);
     }
 
     EventPlayerEliminated(const unsigned char *buff, size_t size) {
         if (size < 1) {
             throw EncoderDecoderError();
         }
-        player_number = buff[0];
-        // TODO to nie jest weryfikowane
+        playerNumber = buff[0];
     }
 
     uint32_t encode(unsigned char *buff) const {
-        buff[0] = player_number;
+        buff[0] = playerNumber;
         return 1;
     }
 };
@@ -118,5 +119,7 @@ struct ServerToClientMessage {
     ServerToClientMessage(unsigned char *buffer, size_t size);
     size_t encode(unsigned char *buffer);
 };
+
+std::string eventToMessageForGui(const Event &e, const std::unordered_map<uint8_t, std::string> &playerNames);
 
 #endif // SIK_NETWORMS_MESSAGES_H

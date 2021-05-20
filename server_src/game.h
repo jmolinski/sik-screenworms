@@ -3,7 +3,7 @@
 
 #include "../common/fingerprint.h"
 #include "../common/messages.h"
-#include "rng.h"
+#include "../common/rng.h"
 #include <map>
 #include <set>
 #include <vector>

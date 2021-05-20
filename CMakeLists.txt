@@ -21,7 +21,7 @@ add_executable(screen-worms-server
         common/messages.cpp
         common/fingerprint.cpp
         common/crc32.cpp
-        server_src/rng.h
+        common/rng.h
         )
 
 add_executable(screen-worms-client
@@ -35,7 +35,7 @@ add_executable(screen-worms-client
         common/messages.cpp
         common/fingerprint.cpp
         common/crc32.cpp
-        server_src/rng.h
+        common/rng.h
         )
 
 install(TARGETS DESTINATION .)

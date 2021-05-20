@@ -2,6 +2,7 @@
 #include "crc32.h"
 #include <cstring>
 #include <iostream>
+#include <sstream>
 
 template <typename T>
 static inline T binaryToNum(const unsigned char *buff) {
@@ -89,7 +90,7 @@ Event::Event(const unsigned char *buffer, size_t size, size_t *bytesUsed) : even
 uint32_t Event::encode(unsigned char *buffer) const {
     const unsigned char *bufferFirstPos = buffer;
     uint32_t encodedSize = getEncodedSize();
-    uint32_t len = static_cast<uint32_t>(encodedSize - sizeof(uint32_t));
+    auto len = static_cast<uint32_t>(encodedSize - sizeof(uint32_t));
     numToBinary(htobe32(len), buffer);
     numToBinary(htobe32(eventNo), buffer + 4);
     buffer[8] = static_cast<uint8_t>(eventType);
@@ -141,19 +142,45 @@ uint32_t EventNewGame::encode(unsigned char *buff) const {
     return 8 + playersFieldSize;
 }
 
+std::unordered_map<uint8_t, std::string> EventNewGame::parsedPlayers() const {
+    static char buff[maxPlayersFieldSize];
+    memcpy(buff, players, playersFieldSize);
+    for (unsigned i = 0; i < playersFieldSize; i++) {
+        if (buff[i] == ' ') {
+            throw EncoderDecoderError();
+        }
+        if (buff[i] == '\0') {
+            buff[i] = ' ';
+        }
+    }
+
+    std::stringstream ss;
+    ss.write(buff, playersFieldSize);
+    std::string playerName;
+
+    std::unordered_map<uint8_t, std::string> playerNames;
+    while (ss >> playerName) {
+        if (!utils::isValidPlayerName(playerName)) {
+            throw EncoderDecoderError();
+        }
+        playerNames.insert({playerName.size(), playerName});
+    }
+
+    return playerNames;
+}
+
 EventPixel::EventPixel(const unsigned char *buff, size_t size) {
-    // todo nieweryfikowane playerNumber
     if (size < getSize()) {
         throw EncoderDecoderError();
     }
 
-    playeNumber = buff[0];
+    playerNumber = buff[0];
     x = be32toh(binaryToNum<uint32_t>(buff + 1));
     y = be32toh(binaryToNum<uint32_t>(buff + 5));
 }
 
 uint32_t EventPixel::encode(unsigned char *buff) const {
-    buff[0] = playeNumber;
+    buff[0] = playerNumber;
     numToBinary(htobe32(x), buff + 1);
     numToBinary(htobe32(y), buff + 5);
     return 9;
@@ -169,7 +196,12 @@ ServerToClientMessage::ServerToClientMessage(unsigned char *buffer, size_t size)
     uint32_t bytesRead = 4;
     while (size > 0) {
         size_t eventSize = 0;
-        Event event(buffer + bytesRead, size - bytesRead, &eventSize);
+        try {
+            Event event(buffer + bytesRead, size - bytesRead, &eventSize);
+        } catch (const CRC32MismatchError &e) {
+            // We stop decoding further data, but preserve the first events with correct checksum.
+            return;
+        }
         size -= eventSize;
     }
 }
@@ -183,4 +215,27 @@ size_t ServerToClientMessage::encode(unsigned char *buffer) {
     }
 
     return written;
+}
+
+std::string eventToMessageForGui(const Event &e, const std::unordered_map<uint8_t, std::string> &playerNames) {
+    std::ostringstream os;
+
+    if (e.eventType == EventType::newGame) {
+        const auto &event = std::get<EventNewGame>(e.eventData);
+        os << "NEW_GAME " << event.maxx << ' ' << event.maxy;
+
+        auto totalPlayers = static_cast<uint8_t>(playerNames.size());
+        for (uint8_t i = 0; i < totalPlayers; i++) {
+            os << ' ' << playerNames.find(i)->second;
+        }
+        os << '\n';
+    } else if (e.eventType == EventType::pixel) {
+        const auto &event = std::get<EventPixel>(e.eventData);
+        os << "PIXEL " << event.x << ' ' << event.y << ' ' << playerNames.find(event.playerNumber)->second << '\n';
+    } else if (e.eventType == EventType::playerEliminated) {
+        const auto &event = std::get<EventPlayerEliminated>(e.eventData);
+        os << "PLAYER_ELIMINATED " << playerNames.find(event.playerNumber)->second << '\n';
+    }
+
+    return os.str();
 }
