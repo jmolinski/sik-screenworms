@@ -77,9 +77,9 @@ void GameManager::runTurn() {
         }
 
         if (player.turnDirection == TurnDirection::right) {
-            player.movementDirection += turningSpeed;
+            player.movementDirection = (player.movementDirection + turningSpeed) % 360;
         } else if (player.turnDirection == TurnDirection::left) {
-            player.movementDirection -= turningSpeed;
+            player.movementDirection = (player.movementDirection + 360 - turningSpeed) % 360;
         }
 
         double movementDirRad = player.movementDirection * M_PI / 180.0;
