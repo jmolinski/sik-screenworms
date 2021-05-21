@@ -84,7 +84,8 @@ class GameManager {
     bool gameStarted;
 
     std::map<utils::fingerprint_t, Watcher> watchers;
-    std::map<std::string, Player> players;
+    std::map<playername_t, Player> players;
+    std::map<playername_t, uint8_t> playerNumberInGame;
 
     using int_coords = std::pair<uint16_t, uint16_t>;
     std::set<int_coords> eatenPixels;
@@ -94,10 +95,18 @@ class GameManager {
     uint8_t turningSpeed;
     uint8_t alivePlayers;
 
-    void eliminatePlayer(Player &);
-    void emitPixelEvent(const Player &);
     void handleMessageFromWatcher(const utils::fingerprint_t &, const ClientToServerMessage &);
     void handleMessageFromPlayer(const utils::fingerprint_t &, const ClientToServerMessage &);
+    bool canStartGame();
+    void startGame();
+    void eliminatePlayer(Player &);
+
+    void saveEvent(EventType eventType, const GameEventVariant &event);
+
+    void emitPixelEvent(const Player &);
+    void emitPlayerEliminatedEvent(const Player &);
+    void emitNewGameEvent();
+    void emitGameOver();
 
   public:
     GameManager(uint32_t rngSeed, uint8_t turningSpeed, uint16_t maxx, uint16_t maxy);

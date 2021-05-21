@@ -71,9 +71,16 @@ void GameManager::handleMessageFromWatcher(const utils::fingerprint_t &fingerpri
 void GameManager::handleMessageFromPlayer(const utils::fingerprint_t &fingerprint, const ClientToServerMessage &msg) {
     auto it = players.find(fingerprint);
     if (it == players.end()) {
+        (void)msg;
         // TODO add new player
     } else {
         // TODO update player
+    }
+
+    if (!gameStarted) {
+        if (canStartGame()) {
+            startGame();
+        }
     }
 }
 
@@ -94,13 +101,88 @@ void GameManager::eliminatePlayer(Player &player) {
     player.isEliminated = true;
     alivePlayers -= 1;
 
+    emitPlayerEliminatedEvent(player);
+
     if (alivePlayers < 2) {
-        // TODO emit GAME_OVER
+        emitGameOver();
+        gameStarted = false;
     }
+}
+
+void GameManager::saveEvent(EventType eventType, const GameEventVariant &event) {
+    mqManager.schedule(gameId, eventType, event);
+}
+
+void GameManager::emitNewGameEvent() {
+    std::cerr << "New Game event" << std::endl;
+    std::vector<std::string> playerNames;
+    for (const auto &p : players) {
+        playerNames.push_back(p.first);
+    }
+    saveEvent(EventType::newGame, EventNewGame(maxx, maxy, playerNames));
+}
+
+void GameManager::emitGameOver() {
+    std::cerr << "Game Over event " << std::endl;
+    saveEvent(EventType::gameOver, EventGameOver());
 }
 
 void GameManager::emitPixelEvent(const Player &player) {
     std::cerr << "Pixel event for player " << player.playerName << std::endl;
+    const auto &playerNo = playerNumberInGame.find(player.playerName)->second;
+    saveEvent(EventType::pixel, EventPixel(playerNo, player.pixel.x, player.pixel.y));
+}
+
+void GameManager::emitPlayerEliminatedEvent(const Player &player) {
+    std::cerr << "Player eliminated event for player " << player.playerName << std::endl;
+    const auto &playerNo = playerNumberInGame.find(player.playerName)->second;
+    saveEvent(EventType::playerEliminated, EventPlayerEliminated(playerNo));
+}
+
+bool GameManager::canStartGame() {
+    unsigned readyPlayers = 0;
+    for (const auto &player : players) {
+        if (player.second.turnDirection != TurnDirection::straight) {
+            readyPlayers++;
+        }
+    }
+
+    return readyPlayers > 1 && readyPlayers == players.size();
+}
+
+void GameManager::startGame() {
+    gameId = rng.generateNext();
+
+    playerNumberInGame.clear();
+    for (auto &p : players) {
+        playerNumberInGame.insert({p.first, playerNumberInGame.size()});
+    }
+    emitNewGameEvent();
+
+    for (auto &p : players) {
+        auto &player = p.second;
+        player.takesPartInCurrentGame = true;
+        player.isEliminated = false; // TODO używane?
+
+        player.coords.x = rng.generateNext() % maxx + 0.5;
+        player.coords.y = rng.generateNext() % maxy + 0.5;
+        player.movementDirection = static_cast<uint16_t>(rng.generateNext() % 360);
+
+        player.pixel.x = static_cast<uint16_t>(player.coords.x);
+        player.pixel.y = static_cast<uint16_t>(player.coords.y);
+
+        if (eatenPixels.find({player.pixel.x, player.pixel.y}) != eatenPixels.end()) {
+            eliminatePlayer(player);
+        } else {
+            eatenPixels.insert({player.pixel.x, player.pixel.y});
+            emitPixelEvent(player);
+        }
+
+        if (!gameStarted) {
+            // Game might have ended on player elimination above.
+            break;
+        }
+    }
 }
 
 void GameManager::runTurn() {
@@ -120,9 +202,9 @@ void GameManager::runTurn() {
         }
 
         if (player.turnDirection == TurnDirection::right) {
-            player.movementDirection = (player.movementDirection + turningSpeed) % 360;
+            player.movementDirection = static_cast<uint16_t>((player.movementDirection + turningSpeed) % 360);
         } else if (player.turnDirection == TurnDirection::left) {
-            player.movementDirection = (player.movementDirection + 360 - turningSpeed) % 360;
+            player.movementDirection = static_cast<uint16_t>((player.movementDirection + 360 - turningSpeed) % 360);
         }
 
         double movementDirRad = player.movementDirection * M_PI / 180.0;
