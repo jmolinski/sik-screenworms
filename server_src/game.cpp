@@ -2,6 +2,49 @@
 #include <cmath>
 #include <iostream>
 
+void MQManager::schedule(uint32_t gameId, EventType eventType, const GameEventVariant &event) {
+    if (gameId == currentlyBroadcastedGameId) {
+        auto eventNo = static_cast<uint32_t>(currentGameEvents.size());
+        currentGameEvents.emplace_back(eventNo, eventType, event);
+    } else {
+        for (auto &upcomingGame : nextGames) {
+            if (upcomingGame.first == gameId) {
+                upcomingGame.second.emplace_back(eventType, event);
+                return;
+            }
+        }
+        // New game id, we must create a new queue for it.
+        nextGames.push_back({gameId, {ScheduledEvent{eventType, event}}});
+    }
+}
+
+MessageAndRecipient MQManager::getNextMessage() {
+    if (!hasPendingMessagesForCurrentGame() && !nextGames.empty()) {
+        for (auto &queue : queues) {
+            queue.second = 0;
+        }
+        currentlyBroadcastedGameId = nextGames[0].first;
+        currentGameEvents.clear();
+        for (const auto &x : nextGames[0].second) {
+            auto eventNo = static_cast<uint32_t>(currentGameEvents.size());
+            currentGameEvents.emplace_back(eventNo, x.first, x.second);
+        }
+
+        nextGames.erase(nextGames.begin());
+    }
+
+    for (auto &queue : queues) {
+        if (queue.second < currentGameEvents.size()) {
+            uint32_t eventNoOffset = queue.second;
+            auto [itemsRead, msg] = ServerToClientMessage::fromEvents(
+                currentlyBroadcastedGameId, currentGameEvents.cbegin() + eventNoOffset, currentGameEvents.cend());
+            return {queue.first, eventNoOffset + itemsRead, msg};
+        }
+    }
+
+    throw std::logic_error("getNextMessage called on empty scheduler");
+}
+
 GameManager::GameManager(uint32_t rngSeed, uint8_t turningSpeed, uint16_t maxx, uint16_t maxy)
     : gameId(0), rng(rngSeed), maxx(maxx), maxy(maxy), turningSpeed(turningSpeed) {
 }

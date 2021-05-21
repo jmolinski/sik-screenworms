@@ -8,29 +8,40 @@
 #include <set>
 #include <vector>
 
-struct ClientOutgoingMsgQueue {
-    uint32_t nextExpectedEventNo;
-};
+using gameid_t = uint32_t;
+using playername_t = std::string;
+
+using MessageAndRecipient = std::tuple<utils::fingerprint_t, uint32_t, ServerToClientMessage>;
 
 class MQManager {
-    uint32_t currentGameId;
-    std::map<utils::fingerprint_t, ClientOutgoingMsgQueue> queues;
+    using ScheduledEvent = std::pair<EventType, GameEventVariant>;
+
+    std::vector<std::pair<gameid_t, std::vector<ScheduledEvent>>> nextGames;
+
+    std::map<utils::fingerprint_t, uint32_t> queues;
+    std::vector<Event> currentGameEvents;
+    gameid_t currentlyBroadcastedGameId;
+
+    bool hasPendingMessagesForCurrentGame() const {
+        for (const auto &queue : queues) {
+            if (queue.second < currentGameEvents.size()) {
+                return true;
+            }
+        }
+        return false;
+    }
 
   public:
-    void setGameId(uint32_t gameId) {
-        currentGameId = gameId;
+    bool isEmpty() const {
+        return !hasPendingMessagesForCurrentGame() && nextGames.empty();
     }
 
-    bool isEmpty() {
-        // TODO
-        return true;
-    }
-
-    void schedule() {
-    }
+    void schedule(uint32_t gameId, EventType eventType, const GameEventVariant &event);
+    MessageAndRecipient getNextMessage();
 
     void ack(const utils::fingerprint_t &fingerprint, uint32_t nextExpectedEventNo) {
-        // TODO
+        queues.find(fingerprint)->second =
+            std::min(static_cast<uint32_t>(currentGameEvents.size()), nextExpectedEventNo);
     }
 
     void dropQueue(const utils::fingerprint_t &fingerprint) {
@@ -38,7 +49,7 @@ class MQManager {
     }
 
     void addQueue(const utils::fingerprint_t &fingerprint, uint32_t nextExpectedEventNo) {
-        queues.insert({fingerprint, {nextExpectedEventNo}});
+        queues.insert({fingerprint, nextExpectedEventNo});
     }
 };
 
@@ -49,14 +60,13 @@ struct Watcher {
 
 struct Player {
     utils::fingerprint_t fingerprint;
-    std::string playerName;
+    playername_t playerName;
 
     struct {
         double x, y;
     } coords;
 
     uint64_t sessionId;
-    uint32_t nextExpectedEventNo;
 
     struct {
         uint16_t x, y;
@@ -78,8 +88,6 @@ class GameManager {
 
     using int_coords = std::pair<uint16_t, uint16_t>;
     std::set<int_coords> eatenPixels;
-
-    std::vector<Event> events;
 
     RNG rng;
     uint16_t maxx, maxy;

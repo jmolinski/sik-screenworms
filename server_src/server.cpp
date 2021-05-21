@@ -9,14 +9,15 @@ constexpr unsigned TURN_TIMER_PFDS_IDX = 0;
 constexpr unsigned EXPIRATION_TIMER_PFDS_IDX = 1;
 constexpr unsigned SOCKET_PFDS_IDX = 2;
 constexpr size_t INCOMING_MSG_BUFFER_SIZE = 100;
-constexpr unsigned CONNECTION_EXPIRATION_TIME_SEC = 2;
+constexpr unsigned CONNECTION_EXPIRATION_TIME_SEC = 2;  // TODO
+constexpr unsigned CONNECTION_EXPIRATION_TIMER_INTERVAL_MS = 10;
 
 Server::Server(ServerConfig parsedConfig)
     : config(parsedConfig),
       sock(addrinfo{AI_PASSIVE, AF_INET6, SOCK_DGRAM, 0, 0, nullptr, nullptr, nullptr}, "", config.port, true),
       gameManager(config.rngSeed, config.turningSpeed, config.boardWidth, config.boardHeight) {
     turnTimerFd = utils::createArmedTimer(10 * NS_IN_SECOND); // TODO ustawienie tury
-    expirationTimerFd = utils::createArmedTimer(CONNECTION_EXPIRATION_TIME_SEC * NS_IN_SECOND);
+    expirationTimerFd = utils::createArmedTimer(CONNECTION_EXPIRATION_TIMER_INTERVAL_MS * NS_IN_MS);
 }
 
 void Server::readMessageFromClient() {
