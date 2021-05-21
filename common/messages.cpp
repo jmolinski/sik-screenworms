@@ -65,21 +65,21 @@ Event::Event(const unsigned char *buffer, size_t size, size_t *bytesUsed) : even
         throw EncoderDecoderError();
     }
 
-    uint32_t crc32Expected = be32toh(binaryToNum<uint32_t>(buffer + len));
-    uint32_t crc32Actual = utils::crc32(buffer, len);
+    uint32_t crc32Got = be32toh(binaryToNum<uint32_t>(buffer + len));
+    uint32_t crc32Expected = utils::crc32(buffer, len);
 
-    if (crc32Actual != crc32Expected) {
+    if (crc32Got != crc32Expected) {
         throw CRC32MismatchError();
     }
 
     if (eventType == EventType::newGame) {
-        eventData = EventNewGame(buffer + eventHeaderSize, len);
+        eventData = EventNewGame(buffer + eventHeaderSize, len - eventHeaderSize);
     } else if (eventType == EventType::pixel) {
-        eventData = EventPixel(buffer + eventHeaderSize, len);
+        eventData = EventPixel(buffer + eventHeaderSize, len - eventHeaderSize);
     } else if (eventType == EventType::playerEliminated) {
-        eventData = EventPlayerEliminated(buffer + eventHeaderSize, len);
+        eventData = EventPlayerEliminated(buffer + eventHeaderSize, len - eventHeaderSize);
     } else if (eventType == EventType::gameOver) {
-        eventData = EventGameOver(buffer + eventHeaderSize, len);
+        eventData = EventGameOver(buffer + eventHeaderSize, len - eventHeaderSize);
     } else {
         // Invalid eventType
         throw EncoderDecoderError();
@@ -181,7 +181,7 @@ std::unordered_map<uint8_t, std::string> EventNewGame::parsedPlayers() const {
         if (!utils::isValidPlayerName(playerName)) {
             throw EncoderDecoderError();
         }
-        playerNames.insert({playerName.size(), playerName});
+        playerNames.insert({playerNames.size(), playerName});
     }
 
     return playerNames;
@@ -211,16 +211,17 @@ ServerToClientMessage::ServerToClientMessage(unsigned char *buffer, size_t size)
 
     gameId = be32toh(binaryToNum<uint32_t>(buffer));
 
-    uint32_t bytesRead = 4;
-    while (size > 0) {
+    size_t bytesRead = 4;
+    while (size > bytesRead) {
         size_t eventSize = 0;
         try {
             Event event(buffer + bytesRead, size - bytesRead, &eventSize);
+            events.push_back(event);
         } catch (const CRC32MismatchError &e) {
             // We stop decoding further data, but preserve the first events with correct checksum.
             return;
         }
-        size -= eventSize;
+        bytesRead += eventSize;
     }
 }
 
@@ -241,13 +242,14 @@ std::pair<uint32_t, ServerToClientMessage> ServerToClientMessage::fromEvents(uin
     std::vector<Event> pickedEvents;
     size_t reservedSize = sizeof(gameId);
 
-    while (reservedSize < MAX_UDP_DATA_FIELD_SIZE && it != endIt) {
+    while (it != endIt) {
         size_t eventSize = it->getEncodedSize();
         if (reservedSize + eventSize > MAX_UDP_DATA_FIELD_SIZE) {
             break;
         }
         reservedSize += eventSize;
         pickedEvents.push_back(*it);
+        it++;
     }
 
     return {pickedEvents.size(), ServerToClientMessage(gameIdParam, pickedEvents)};

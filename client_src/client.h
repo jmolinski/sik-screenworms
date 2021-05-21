@@ -56,7 +56,7 @@ class Client {
     void processMessageFromServer(const ServerToClientMessage &);
     void processMessageFromServerWithMismatchedGameId(const ServerToClientMessage &);
     void readInEventsListOfCurrentGame(const ServerToClientMessage &msg);
-    void validateEvent(const Event &event);
+    void validateEvent(const Event &event) const;
 };
 
 #endif // SIK_NETWORMS_CLIENT_H

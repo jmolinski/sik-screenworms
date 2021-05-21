@@ -32,7 +32,7 @@ class TcpSocket {
 
     std::vector<char> outBuffer;
     std::vector<char> inBuffer;
-    uint32_t unreadNewlines;
+    uint32_t unreadNewlines{};
 
   public:
     TcpSocket(addrinfo addrInfo, const std::string &hostname, uint16_t portNum);

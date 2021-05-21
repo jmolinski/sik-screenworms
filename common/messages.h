@@ -71,7 +71,7 @@ struct EventPlayerEliminated {
         return sizeof(playerNumber);
     }
 
-    EventPlayerEliminated(uint8_t playerNumber) : playerNumber(playerNumber) {
+    explicit EventPlayerEliminated(uint8_t playerNumber) : playerNumber(playerNumber) {
     }
 
     EventPlayerEliminated(const unsigned char *buff, size_t size) {
@@ -92,8 +92,7 @@ struct EventGameOver {
         return 0;
     }
 
-    EventGameOver() {
-    }
+    EventGameOver() = default;
     EventGameOver([[maybe_unused]] const unsigned char *buff, [[maybe_unused]] size_t size) {
     }
 

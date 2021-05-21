@@ -162,7 +162,7 @@ std::pair<bool, std::string> TcpSocket::readline() {
             std::string line(inBuffer.data(), inBuffer.data() + i);
             inBuffer.resize(inBuffer.size() - i - 1);
             unreadNewlines--;
-            break;
+            return {true, line};
         }
     }
 

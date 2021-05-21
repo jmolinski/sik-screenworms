@@ -9,7 +9,7 @@ constexpr unsigned PFDS_COUNT = 3;
 constexpr unsigned TIMER_PFDS_IDX = 0;
 constexpr unsigned SERVER_SOCK_PFDS_IDX = 1;
 constexpr unsigned GUI_SOCK_PFDS_IDX = 2;
-constexpr unsigned long MSG_TO_SERVER_INTERVAL_MS = 5'000; // TODO ustawienie interwału 30 ms
+constexpr unsigned long MSG_TO_SERVER_INTERVAL_MS = 200; // TODO ustawienie interwału 30 ms
 constexpr size_t INBOUND_SERVER_MESSAGE_BUFFER_SIZE = MAX_UDP_DATA_FIELD_SIZE + 10;
 
 Client::Client(ClientConfig conf)
@@ -22,7 +22,7 @@ Client::Client(ClientConfig conf)
     timerFd = utils::createArmedTimer(MSG_TO_SERVER_INTERVAL_MS * NS_IN_MS);
 }
 
-void Client::validateEvent(const Event &event) {
+void Client::validateEvent(const Event &event) const {
     while (true) {
         if (event.eventType == EventType::newGame) {
             const auto &e = std::get<EventNewGame>(event.eventData);
@@ -49,7 +49,7 @@ void Client::validateEvent(const Event &event) {
 void Client::readInEventsListOfCurrentGame(const ServerToClientMessage &msg) {
     for (const Event &event : msg.events) {
         validateEvent(event);
-        if (events.find(event.eventNo) != events.end()) {
+        if (events.find(event.eventNo) == events.end()) {
             events.insert({event.eventNo, event});
         }
     }
@@ -117,8 +117,6 @@ void Client::readMessageFromServer() {
         return;
     }
 
-    std::cout << "DEBUG got packet from server" << std::endl;
-
     try {
         ServerToClientMessage m(buf, bytesRead);
         processMessageFromServer(m);
@@ -129,7 +127,6 @@ void Client::readMessageFromServer() {
 }
 
 void Client::sendMessageToServer() {
-    std::cout << "DEBUG about to send data to server..." << std::endl;
     ssize_t numbytes = sendto(serverSock.getFd(), messageToServer.data, messageToServer.size, MSG_DONTWAIT,
                               serverSock.getAddrInfo().ai_addr, serverSock.getAddrInfo().ai_addrlen);
     if (numbytes == -1) {
@@ -144,7 +141,9 @@ void Client::sendMessageToServer() {
 
 void Client::enqueueMessageToServer() {
     std::cerr << "Enqueue message" << std::endl;
-    ClientToServerMessage msg(sessionId, turnDirection, nextWantedEventNo, config.playerName);
+    // TODO left
+    auto direction = rand() % 2 == 0 ? TurnDirection::left : TurnDirection::right;
+    ClientToServerMessage msg(sessionId, direction, nextWantedEventNo, config.playerName);
     messageToServer.size = msg.encode(messageToServer.data);
     messageToServer.ready = true;
 }
@@ -192,19 +191,19 @@ void Client::readUpdateFromGui() {
             } else {
                 enqueueMessageToServer();
             }
-        } else {
-            if (guiSock.hasAvailableLine() || pfds[GUI_SOCK_PFDS_IDX].revents & POLLIN) {
-                readUpdateFromGui();
-            }
-            if (guiSock.hasPendingOutgoingData() && pfds[GUI_SOCK_PFDS_IDX].revents & POLLOUT) {
-                guiSock.flushOutgoing();
-            }
-            if (pfds[SERVER_SOCK_PFDS_IDX].revents & POLLIN) {
-                readMessageFromServer();
-            }
-            if (messageToServer.ready && pfds[SERVER_SOCK_PFDS_IDX].revents & POLLOUT) {
-                sendMessageToServer();
-            }
+        }
+        if (guiSock.hasAvailableLine() || pfds[GUI_SOCK_PFDS_IDX].revents & POLLIN) {
+            readUpdateFromGui();
+        }
+        if (guiSock.hasPendingOutgoingData() && pfds[GUI_SOCK_PFDS_IDX].revents & POLLOUT) {
+            std::cerr << "Flush to gui" << std::endl;
+            guiSock.flushOutgoing();
+        }
+        if (pfds[SERVER_SOCK_PFDS_IDX].revents & POLLIN) {
+            readMessageFromServer();
+        }
+        if (messageToServer.ready && pfds[SERVER_SOCK_PFDS_IDX].revents & POLLOUT) {
+            sendMessageToServer();
         }
 
         pfds[SERVER_SOCK_PFDS_IDX].events = POLLIN;
