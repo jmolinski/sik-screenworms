@@ -32,8 +32,8 @@ class Client {
 
     // Current game events & fields relating to client->gui communication.
     std::unordered_map<uint32_t, Event> events;
-    uint32_t nextWantedEventNo; // TODO ?
-    uint32_t nextEventToSendNo; // TODO ?
+    uint32_t nextWantedEventNo;
+    uint32_t nextEventToSendNo;
 
     // Registry of played games, current gameId.
     std::unordered_set<uint32_t> seenGameIds;

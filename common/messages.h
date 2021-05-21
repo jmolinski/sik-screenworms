@@ -4,6 +4,7 @@
 #include "misc.h"
 #include <exception>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -44,6 +45,7 @@ struct EventNewGame {
 
     std::unordered_map<uint8_t, std::string> parsedPlayers() const;
 
+    EventNewGame(uint32_t maxx, uint32_t maxy, const std::vector<std::string> &playerNames);
     EventNewGame(const unsigned char *buff, uint32_t size);
     uint32_t encode(unsigned char *buff) const;
 };
@@ -56,6 +58,8 @@ struct EventPixel {
         return sizeof(x) + sizeof(y) + sizeof(playerNumber);
     }
 
+    EventPixel(uint8_t playerNumber, uint32_t x, uint32_t y) : playerNumber(playerNumber), x(x), y(y) {
+    }
     EventPixel(const unsigned char *buff, size_t size);
     uint32_t encode(unsigned char *buff) const;
 };
@@ -65,6 +69,9 @@ struct EventPlayerEliminated {
 
     uint32_t getSize() const {
         return sizeof(playerNumber);
+    }
+
+    EventPlayerEliminated(uint8_t playerNumber) : playerNumber(playerNumber) {
     }
 
     EventPlayerEliminated(const unsigned char *buff, size_t size) {
@@ -116,8 +123,15 @@ struct ServerToClientMessage {
     uint32_t gameId;
     std::vector<Event> events;
 
+    ServerToClientMessage(uint32_t gameIdParam, std::vector<Event> pickedEvents)
+        : gameId(gameIdParam), events(std::move(pickedEvents)) {
+    }
+
     ServerToClientMessage(unsigned char *buffer, size_t size);
     size_t encode(unsigned char *buffer);
+
+    static std::pair<uint32_t, ServerToClientMessage> fromEvents(uint32_t gameId, std::vector<Event>::const_iterator it,
+                                                                 std::vector<Event>::const_iterator endIt);
 };
 
 std::string eventToMessageForGui(const Event &e, const std::unordered_map<uint8_t, std::string> &playerNames);

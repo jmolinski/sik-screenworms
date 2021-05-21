@@ -2,7 +2,6 @@
 #include "crc32.h"
 #include <cstring>
 #include <iostream>
-#include <sstream>
 
 template <typename T>
 static inline T binaryToNum(const unsigned char *buff) {
@@ -128,6 +127,25 @@ uint32_t Event::getEncodedSize() const {
     return getEventDataSize() + sizeof(uint32_t) + sizeof(eventNo) + sizeof(eventType) + sizeof(uint32_t);
 }
 
+EventNewGame::EventNewGame(uint32_t maxx, uint32_t maxy, const std::vector<std::string> &playerNames) {
+    this->maxx = maxx;
+    this->maxy = maxy;
+
+    std::ostringstream os; // TODO ładniej
+    for (const auto &pname : playerNames) {
+        os << pname << ' ';
+    }
+    std::string spaceSeparatedNames = os.str();
+    memcpy(players, spaceSeparatedNames.c_str(), spaceSeparatedNames.size());
+    playersFieldSize = static_cast<uint32_t>(spaceSeparatedNames.size());
+
+    for (unsigned i = 0; i < playersFieldSize; i++) {
+        if (players[i] == ' ') {
+            players[i] = '\0';
+        }
+    }
+}
+
 EventNewGame::EventNewGame(const unsigned char *buff, uint32_t size) {
     maxx = be32toh(binaryToNum<uint32_t>(buff));
     maxy = be32toh(binaryToNum<uint32_t>(buff + 4));
@@ -215,6 +233,24 @@ size_t ServerToClientMessage::encode(unsigned char *buffer) {
     }
 
     return written;
+}
+
+std::pair<uint32_t, ServerToClientMessage> ServerToClientMessage::fromEvents(uint32_t gameIdParam,
+                                                                             std::vector<Event>::const_iterator it,
+                                                                             std::vector<Event>::const_iterator endIt) {
+    std::vector<Event> pickedEvents;
+    size_t reservedSize = sizeof(gameId);
+
+    while (reservedSize < MAX_UDP_DATA_FIELD_SIZE && it != endIt) {
+        size_t eventSize = it->getEncodedSize();
+        if (reservedSize + eventSize > MAX_UDP_DATA_FIELD_SIZE) {
+            break;
+        }
+        reservedSize += eventSize;
+        pickedEvents.push_back(*it);
+    }
+
+    return {pickedEvents.size(), ServerToClientMessage(gameIdParam, pickedEvents)};
 }
 
 std::string eventToMessageForGui(const Event &e, const std::unordered_map<uint8_t, std::string> &playerNames) {
