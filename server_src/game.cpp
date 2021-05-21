@@ -33,16 +33,18 @@ MessageAndRecipient MQManager::getNextMessage() {
         nextGames.erase(nextGames.begin());
     }
 
-    for (auto &queue : queues) {
-        if (queue.second < currentGameEvents.size()) {
-            uint32_t eventNoOffset = queue.second;
+    while (true) {
+        auto fprint = clientsToServeSchedule.front();
+        clientsToServeSchedule.pop_front();
+        clientsToServeSchedule.push_back(fprint);
+
+        auto &clientNextWanted = queues.find(fprint)->second;
+        if (clientNextWanted < currentGameEvents.size()) {
             auto [itemsRead, msg] = ServerToClientMessage::fromEvents(
-                currentlyBroadcastedGameId, currentGameEvents.cbegin() + eventNoOffset, currentGameEvents.cend());
-            return {queue.first, eventNoOffset + itemsRead, msg};
+                currentlyBroadcastedGameId, currentGameEvents.cbegin() + clientNextWanted, currentGameEvents.cend());
+            return {fprint, clientNextWanted + itemsRead, msg};
         }
     }
-
-    throw std::logic_error("getNextMessage called on empty scheduler");
 }
 
 GameManager::GameManager(uint32_t rngSeed, uint8_t turningSpeed, uint16_t maxx, uint16_t maxy)
@@ -85,10 +87,6 @@ void GameManager::handleMessageFromPlayer(const utils::fingerprint_t &fingerprin
 }
 
 void GameManager::handleMessage(const utils::fingerprint_t &fingerprint, ClientToServerMessage msg) {
-    std::cerr << "DEBUG MSG: sessionid " << msg.sessionId << " turn "
-              << (uint32_t) static_cast<uint8_t>(msg.turnDirection) << " eventNo " << msg.nextExpectedEventNo
-              << " pname " << msg.playerName << std::endl;
-
     if (msg.playerNameSize == 0) {
         handleMessageFromWatcher(fingerprint, msg);
     } else {
@@ -186,8 +184,6 @@ void GameManager::startGame() {
 }
 
 void GameManager::runTurn() {
-    std::cerr << "turn alarm" << std::endl;
-
     if (!gameStarted) {
         return;
     }

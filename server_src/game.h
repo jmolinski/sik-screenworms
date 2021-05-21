@@ -4,6 +4,7 @@
 #include "../common/fingerprint.h"
 #include "../common/messages.h"
 #include "../common/rng.h"
+#include <deque>
 #include <map>
 #include <set>
 #include <vector>
@@ -19,6 +20,8 @@ class MQManager {
     std::vector<std::pair<gameid_t, std::vector<ScheduledEvent>>> nextGames;
 
     std::map<utils::fingerprint_t, uint32_t> queues;
+    std::deque<utils::fingerprint_t> clientsToServeSchedule;
+
     std::vector<Event> currentGameEvents;
     gameid_t currentlyBroadcastedGameId;
 
@@ -40,16 +43,27 @@ class MQManager {
     MessageAndRecipient getNextMessage();
 
     void ack(const utils::fingerprint_t &fingerprint, uint32_t nextExpectedEventNo) {
-        queues.find(fingerprint)->second =
-            std::min(static_cast<uint32_t>(currentGameEvents.size()), nextExpectedEventNo);
+        auto &clientNextWanted = queues.find(fingerprint)->second;
+        if (nextGames.empty()) {
+            clientNextWanted = std::min(static_cast<uint32_t>(currentGameEvents.size()), nextExpectedEventNo);
+        }
     }
 
     void dropQueue(const utils::fingerprint_t &fingerprint) {
         queues.erase(fingerprint);
+        auto it = clientsToServeSchedule.begin();
+        while (it != clientsToServeSchedule.end()) {
+            if (*it == fingerprint) {
+                clientsToServeSchedule.erase(it);
+                return;
+            }
+            it++;
+        }
     }
 
     void addQueue(const utils::fingerprint_t &fingerprint, uint32_t nextExpectedEventNo) {
         queues.insert({fingerprint, nextExpectedEventNo});
+        clientsToServeSchedule.push_back(fingerprint);
     }
 };
 
