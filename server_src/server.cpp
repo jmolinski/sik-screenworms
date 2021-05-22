@@ -3,26 +3,26 @@
 #include <poll.h>
 #include <unistd.h>
 
-constexpr int POLL_TIMEOUT = 10;
+constexpr int POLL_TIMEOUT = 5;
 constexpr unsigned PFDS_COUNT = 3;
 constexpr unsigned TURN_TIMER_PFDS_IDX = 0;
 constexpr unsigned EXPIRATION_TIMER_PFDS_IDX = 1;
 constexpr unsigned SOCKET_PFDS_IDX = 2;
 constexpr size_t INCOMING_MSG_BUFFER_SIZE = 100;
-constexpr unsigned CONNECTION_EXPIRATION_TIME_SEC = 2;  // TODO
-constexpr unsigned CONNECTION_EXPIRATION_TIMER_INTERVAL_MS = 10;
+constexpr unsigned CONNECTION_EXPIRATION_TIME_SEC = 2; // TODO
+constexpr unsigned CONNECTION_EXPIRATION_TIMER_INTERVAL_MS = 10000000; // TODO 10
 
 Server::Server(ServerConfig parsedConfig)
     : config(parsedConfig),
       sock(addrinfo{AI_PASSIVE, AF_INET6, SOCK_DGRAM, 0, 0, nullptr, nullptr, nullptr}, "", config.port, true),
       gameManager(config.rngSeed, config.turningSpeed, config.boardWidth, config.boardHeight) {
-    turnTimerFd = utils::createArmedTimer(10 * NS_IN_SECOND); // TODO ustawienie tury
+    turnTimerFd = utils::createArmedTimer(100 * NS_IN_MS); // TODO ustawienie tury
+    //long roundTime = NS_IN_SECOND / config.roundsPerSec;
+    //turnTimerFd = utils::createArmedTimer(roundTime); // TODO ustawienie tury
     expirationTimerFd = utils::createArmedTimer(CONNECTION_EXPIRATION_TIMER_INTERVAL_MS * NS_IN_MS);
 }
 
 void Server::readMessageFromClient() {
-    std::cout << "DEBUG about to read data from client..." << std::endl;
-
     static unsigned char buf[INCOMING_MSG_BUFFER_SIZE];
 
     sockaddr_storage their_addr{};
@@ -36,7 +36,7 @@ void Server::readMessageFromClient() {
     std::string fingerprint = utils::fingerprintNetuser((sockaddr *)&their_addr);
     lastCommunicationTs.insert_or_assign(fingerprint, utils::getCurrentTimestamp());
     if (clientAddrs.find(fingerprint) == clientAddrs.end()) {
-        // TODO add addr to map
+        clientAddrs.insert({fingerprint, {their_addr, addr_len}});
     }
     std::cout << "DEBUG got packet from " << fingerprint << std::endl;
 
@@ -50,7 +50,21 @@ void Server::readMessageFromClient() {
 }
 
 void Server::sendMessageToClient() {
-    std::cerr << "Data can be written (i'm scared)" << std::endl; // TODO
+    auto [fingerprint, ackNumber, msg] = gameManager.mqManager.getNextMessage();
+
+    static unsigned char dataBuffer[MAX_UDP_DATA_FIELD_SIZE];
+    size_t payloadSize = msg.encode(dataBuffer);
+
+    auto &clientAddrInfo = clientAddrs.find(fingerprint)->second;
+
+    ssize_t numbytes = sendto(sock.getFd(), dataBuffer, payloadSize, MSG_DONTWAIT, (sockaddr *)&clientAddrInfo.first,
+                              clientAddrInfo.second);
+    if (numbytes == -1) {
+        perror("sendto failed.");
+        return;
+    }
+
+    gameManager.mqManager.ack(fingerprint, ackNumber);
 }
 
 void Server::cleanupObsoleteConnections() {

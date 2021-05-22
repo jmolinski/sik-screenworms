@@ -48,7 +48,7 @@ MessageAndRecipient MQManager::getNextMessage() {
 }
 
 GameManager::GameManager(uint32_t rngSeed, uint8_t turningSpeed, uint16_t maxx, uint16_t maxy)
-    : gameId(0), rng(rngSeed), maxx(maxx), maxy(maxy), turningSpeed(turningSpeed) {
+    : gameId(0), gameStarted(false), rng(rngSeed), maxx(maxx), maxy(maxy), turningSpeed(turningSpeed) {
 }
 
 void GameManager::handleMessageFromWatcher(const utils::fingerprint_t &fingerprint, const ClientToServerMessage &msg) {
@@ -71,12 +71,22 @@ void GameManager::handleMessageFromWatcher(const utils::fingerprint_t &fingerpri
 }
 
 void GameManager::handleMessageFromPlayer(const utils::fingerprint_t &fingerprint, const ClientToServerMessage &msg) {
-    auto it = players.find(fingerprint);
+    auto it = players.find(msg.playerName);
+    // TODO walidacje i wszystko
     if (it == players.end()) {
-        (void)msg;
-        // TODO add new player
+        Player p;
+        p.playerName = msg.playerName;
+        p.fingerprint = fingerprint;
+        p.takesPartInCurrentGame = false;  // TODO to nie jest respektowane
+        p.isEliminated = false;
+        p.isDisconnected = false;
+        p.sessionId = msg.sessionId;
+        players.insert({p.playerName, p});
+        mqManager.addQueue(fingerprint, msg.nextExpectedEventNo);
     } else {
-        // TODO update player
+        auto &p = players.find(msg.playerName)->second;
+        p.turnDirection = msg.turnDirection;
+        mqManager.ack(fingerprint, msg.nextExpectedEventNo);
     }
 
     if (!gameStarted) {
@@ -95,7 +105,6 @@ void GameManager::handleMessage(const utils::fingerprint_t &fingerprint, ClientT
 }
 
 void GameManager::eliminatePlayer(Player &player) {
-    std::cerr << "Player " << player.playerName << " eliminated" << std::endl;
     player.isEliminated = true;
     alivePlayers -= 1;
 
@@ -126,7 +135,6 @@ void GameManager::emitGameOver() {
 }
 
 void GameManager::emitPixelEvent(const Player &player) {
-    std::cerr << "Pixel event for player " << player.playerName << std::endl;
     const auto &playerNo = playerNumberInGame.find(player.playerName)->second;
     saveEvent(EventType::pixel, EventPixel(playerNo, player.pixel.x, player.pixel.y));
 }
@@ -150,6 +158,8 @@ bool GameManager::canStartGame() {
 
 void GameManager::startGame() {
     gameId = rng.generateNext();
+    gameStarted = true;
+    alivePlayers = static_cast<uint8_t>(players.size());
 
     playerNumberInGame.clear();
     for (auto &p : players) {
@@ -190,7 +200,7 @@ void GameManager::runTurn() {
 
     for (auto &playerPair : players) {
         auto &player = playerPair.second;
-        if (player.isEliminated) {
+        if (player.isEliminated || !player.takesPartInCurrentGame) {
             continue;
         }
         if (!gameStarted) {

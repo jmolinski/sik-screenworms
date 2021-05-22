@@ -63,6 +63,7 @@ void Client::processMessageFromServerWithMismatchedGameId(const ServerToClientMe
 
     // A packet describing a new game.
     gameId = msg.gameId;
+    seenGameIds.insert({msg.gameId});
     playersInGame = 0;
     nextWantedEventNo = 0;
     nextEventToSendNo = 0;

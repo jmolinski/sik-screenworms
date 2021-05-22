@@ -15,7 +15,7 @@ class Server {
     timer_fd_t expirationTimerFd;
     GameManager gameManager;
 
-    std::unordered_map<utils::fingerprint_t, addrinfo> clientAddrs;
+    std::unordered_map<utils::fingerprint_t, std::pair<sockaddr_storage, socklen_t>> clientAddrs;
     std::unordered_map<utils::fingerprint_t, utils::time_stamp_t> lastCommunicationTs;
 
   public:
