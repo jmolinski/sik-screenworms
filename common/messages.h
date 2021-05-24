@@ -93,10 +93,10 @@ struct EventGameOver {
     }
 
     EventGameOver() = default;
-    EventGameOver([[maybe_unused]] const unsigned char *buff, [[maybe_unused]] size_t size) {
+    EventGameOver(const unsigned char *buff [[maybe_unused]], size_t size [[maybe_unused]]) {
     }
 
-    uint32_t encode([[maybe_unused]] unsigned char *buff) const {
+    uint32_t encode(unsigned char *buff [[maybe_unused]]) const {
         return 0;
     }
 };

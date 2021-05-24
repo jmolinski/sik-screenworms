@@ -115,12 +115,16 @@ void GameManager::handleMessageFromPlayer(const utils::fingerprint_t &fingerprin
         p.takesPartInCurrentGame = false; // TODO to nie jest respektowane
         p.isEliminated = false;
         p.isDisconnected = false;
+        p.isReadyToPlay = false;
         p.sessionId = msg.sessionId;
         players.insert({p.playerName, p});
         mqManager.addQueue(fingerprint, msg.nextExpectedEventNo);
     } else {
         auto &p = players.find(msg.playerName)->second;
         p.turnDirection = msg.turnDirection;
+        if (!gameStarted && msg.turnDirection != TurnDirection::straight) {
+            p.isReadyToPlay = true;
+        }
         mqManager.ack(fingerprint, msg.nextExpectedEventNo);
     }
 
@@ -195,7 +199,7 @@ void GameManager::emitPlayerEliminatedEvent(const Player &player) {
 bool GameManager::canStartGame() {
     unsigned readyPlayers = 0;
     for (const auto &player : players) {
-        if (player.second.turnDirection != TurnDirection::straight) {
+        if (player.second.isReadyToPlay) {
             readyPlayers++;
         }
     }
@@ -248,7 +252,9 @@ void GameManager::endGame() {
     gameStarted = false;
 
     std::vector<playername_t> playersToErase;
-    for (const auto &p : players) {
+    for (auto &p : players) {
+        p.second.isReadyToPlay = false;
+
         if (p.second.isDisconnected) {
             playersToErase.push_back(p.first);
         }

@@ -64,6 +64,7 @@ struct Player { // todo is ready to play -- żeby wystarczyło że raz wyśle tu
     bool takesPartInCurrentGame;
     bool isDisconnected;
     bool isEliminated;
+    bool isReadyToPlay;
 };
 
 class GameManager {
