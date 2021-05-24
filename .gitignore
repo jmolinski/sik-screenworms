@@ -44,3 +44,6 @@ client_src/talker.c
 server_src/listener.c
 
 sik-testy-serwerowe-preview-moga-byc-zle-moga-byc-bledne/
+
+tests/*.py
+tests/__pycache__

@@ -13,12 +13,11 @@ constexpr unsigned long MSG_TO_SERVER_INTERVAL_MS = 200; // TODO ustawienie inte
 constexpr size_t INBOUND_SERVER_MESSAGE_BUFFER_SIZE = MAX_UDP_DATA_FIELD_SIZE + 10;
 
 Client::Client(ClientConfig conf)
-    : config(std::move(conf)), serverSock({0, AF_INET6, SOCK_DGRAM, 0, 0, nullptr, nullptr, nullptr}, config.gameServer,
-                                          config.serverPort, false),
+    : config(std::move(conf)), serverSock({0, AF_UNSPEC, SOCK_DGRAM, 0, 0, nullptr, nullptr, nullptr},
+                                          config.gameServer, config.serverPort, false),
       guiSock({0, AF_UNSPEC, SOCK_STREAM, 0, 0, nullptr, nullptr, nullptr}, config.guiServer, config.guiPort),
       messageToServer{{0}, 0, false}, sessionId(utils::timestampToUll(utils::getCurrentTimestamp())),
       turnDirection(TurnDirection::straight), gameId(-1) {
-    serverSock.connectPeer(serverSock.getAddrInfo());
     timerFd = utils::createArmedTimer(MSG_TO_SERVER_INTERVAL_MS * NS_IN_MS);
 }
 

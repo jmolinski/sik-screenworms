@@ -47,6 +47,39 @@ MessageAndRecipient MQManager::getNextMessage() {
     }
 }
 
+bool MQManager::hasPendingMessagesForCurrentGame() const {
+    for (const auto &queue : queues) {
+        if (queue.second < currentGameEvents.size()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void MQManager::ack(const utils::fingerprint_t &fingerprint, uint32_t nextExpectedEventNo) {
+    auto &clientNextWanted = queues.find(fingerprint)->second;
+    if (nextGames.empty()) {
+        clientNextWanted = std::min(static_cast<uint32_t>(currentGameEvents.size()), nextExpectedEventNo);
+    }
+}
+
+void MQManager::dropQueue(const utils::fingerprint_t &fingerprint) {
+    queues.erase(fingerprint);
+    auto it = clientsToServeSchedule.begin();
+    while (it != clientsToServeSchedule.end()) {
+        if (*it == fingerprint) {
+            clientsToServeSchedule.erase(it);
+            return;
+        }
+        it++;
+    }
+}
+
+void MQManager::addQueue(const utils::fingerprint_t &fingerprint, uint32_t nextExpectedEventNo) {
+    queues.insert({fingerprint, nextExpectedEventNo});
+    clientsToServeSchedule.push_back(fingerprint);
+}
+
 GameManager::GameManager(uint32_t rngSeed, uint8_t turningSpeed, uint16_t maxx, uint16_t maxy)
     : gameId(0), gameStarted(false), rng(rngSeed), maxx(maxx), maxy(maxy), turningSpeed(turningSpeed) {
 }
@@ -77,7 +110,7 @@ void GameManager::handleMessageFromPlayer(const utils::fingerprint_t &fingerprin
         Player p;
         p.playerName = msg.playerName;
         p.fingerprint = fingerprint;
-        p.takesPartInCurrentGame = false;  // TODO to nie jest respektowane
+        p.takesPartInCurrentGame = false; // TODO to nie jest respektowane
         p.isEliminated = false;
         p.isDisconnected = false;
         p.sessionId = msg.sessionId;
@@ -121,7 +154,6 @@ void GameManager::saveEvent(EventType eventType, const GameEventVariant &event) 
 }
 
 void GameManager::emitNewGameEvent() {
-    std::cerr << "New Game event" << std::endl;
     std::vector<std::string> playerNames;
     for (const auto &p : players) {
         playerNames.push_back(p.first);
@@ -130,7 +162,6 @@ void GameManager::emitNewGameEvent() {
 }
 
 void GameManager::emitGameOver() {
-    std::cerr << "Game Over event " << std::endl;
     saveEvent(EventType::gameOver, EventGameOver());
 }
 
@@ -140,7 +171,6 @@ void GameManager::emitPixelEvent(const Player &player) {
 }
 
 void GameManager::emitPlayerEliminatedEvent(const Player &player) {
-    std::cerr << "Player eliminated event for player " << player.playerName << std::endl;
     const auto &playerNo = playerNumberInGame.find(player.playerName)->second;
     saveEvent(EventType::playerEliminated, EventPlayerEliminated(playerNo));
 }
@@ -199,12 +229,13 @@ void GameManager::runTurn() {
     }
 
     for (auto &playerPair : players) {
+        if (!gameStarted) {
+            break;
+        }
+
         auto &player = playerPair.second;
         if (player.isEliminated || !player.takesPartInCurrentGame) {
             continue;
-        }
-        if (!gameStarted) {
-            break;
         }
 
         if (player.turnDirection == TurnDirection::right) {

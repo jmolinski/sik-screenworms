@@ -3,23 +3,21 @@
 #include <poll.h>
 #include <unistd.h>
 
-constexpr int POLL_TIMEOUT = 5;
-constexpr unsigned PFDS_COUNT = 3;
+constexpr int POLL_TIMEOUT = 1;
+constexpr unsigned PFDS_COUNT = 2;
 constexpr unsigned TURN_TIMER_PFDS_IDX = 0;
-constexpr unsigned EXPIRATION_TIMER_PFDS_IDX = 1;
-constexpr unsigned SOCKET_PFDS_IDX = 2;
+constexpr unsigned SOCKET_PFDS_IDX = 1;
 constexpr size_t INCOMING_MSG_BUFFER_SIZE = 100;
 constexpr unsigned CONNECTION_EXPIRATION_TIME_SEC = 2; // TODO
-constexpr unsigned CONNECTION_EXPIRATION_TIMER_INTERVAL_MS = 10000000; // TODO 10
 
 Server::Server(ServerConfig parsedConfig)
     : config(parsedConfig),
       sock(addrinfo{AI_PASSIVE, AF_INET6, SOCK_DGRAM, 0, 0, nullptr, nullptr, nullptr}, "", config.port, true),
       gameManager(config.rngSeed, config.turningSpeed, config.boardWidth, config.boardHeight) {
-    turnTimerFd = utils::createArmedTimer(100 * NS_IN_MS); // TODO ustawienie tury
-    //long roundTime = NS_IN_SECOND / config.roundsPerSec;
-    //turnTimerFd = utils::createArmedTimer(roundTime); // TODO ustawienie tury
-    expirationTimerFd = utils::createArmedTimer(CONNECTION_EXPIRATION_TIMER_INTERVAL_MS * NS_IN_MS);
+    // turnTimerFd = utils::createArmedTimer(100 * NS_IN_MS); // TODO ustawienie tury
+    long roundTime = NS_IN_SECOND / config.roundsPerSec;
+    std::cout << "czas rundy " << roundTime << std::endl;
+    turnTimerFd = utils::createArmedTimer(roundTime); // TODO ustawienie tury
 }
 
 void Server::readMessageFromClient() {
@@ -68,7 +66,7 @@ void Server::sendMessageToClient() {
 }
 
 void Server::cleanupObsoleteConnections() {
-    std::cerr << "conn cleanup" << std::endl; // TODO
+    // std::cerr << "conn cleanup" << std::endl; // TODO
 }
 
 [[noreturn]] void Server::run() {
@@ -77,8 +75,6 @@ void Server::cleanupObsoleteConnections() {
     pollfd pfds[PFDS_COUNT];
     pfds[TURN_TIMER_PFDS_IDX].fd = turnTimerFd;
     pfds[TURN_TIMER_PFDS_IDX].events = POLLIN;
-    pfds[EXPIRATION_TIMER_PFDS_IDX].fd = expirationTimerFd;
-    pfds[EXPIRATION_TIMER_PFDS_IDX].events = POLLIN;
     pfds[SOCKET_PFDS_IDX].fd = sock.getFd();
     pfds[SOCKET_PFDS_IDX].events = POLLIN;
 
@@ -90,26 +86,20 @@ void Server::cleanupObsoleteConnections() {
             continue;
         }
 
-        uint64_t exp;
         if (pfds[TURN_TIMER_PFDS_IDX].revents & POLLIN) {
+            uint64_t exp;
             if (read(turnTimerFd, &exp, sizeof(uint64_t)) != sizeof(uint64_t)) {
                 std::cerr << "Timer read: problem reading turn timer" << std::endl;
             } else {
+                cleanupObsoleteConnections();
                 gameManager.runTurn();
             }
-        } else if (pfds[EXPIRATION_TIMER_PFDS_IDX].revents & POLLIN) {
-            if (read(expirationTimerFd, &exp, sizeof(uint64_t)) != sizeof(uint64_t)) {
-                std::cerr << "Timer read: problem reading conenction expiration timer" << std::endl;
-            } else {
-                cleanupObsoleteConnections();
-            }
-        } else {
-            if (pfds[SOCKET_PFDS_IDX].revents & POLLIN) {
-                readMessageFromClient();
-            }
-            if (!gameManager.mqManager.isEmpty() && pfds[SOCKET_PFDS_IDX].revents & POLLOUT) {
-                sendMessageToClient();
-            }
+        }
+        if (pfds[SOCKET_PFDS_IDX].revents & POLLIN) {
+            readMessageFromClient();
+        }
+        if (!gameManager.mqManager.isEmpty() && pfds[SOCKET_PFDS_IDX].revents & POLLOUT) {
+            sendMessageToClient();
         }
 
         pfds[SOCKET_PFDS_IDX].events = POLLIN;

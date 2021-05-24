@@ -37,7 +37,8 @@ ClientToServerMessage::ClientToServerMessage(const unsigned char *buffer, size_t
     playerNameSize = size - minStructSize;
     memset(playerName, 0, sizeof playerName);
     memcpy(playerName, buffer + minStructSize, playerNameSize);
-    if (buffer[8] > static_cast<uint8_t>(TurnDirection::left) || !utils::isValidPlayerName(playerName)) {
+    if (buffer[8] > static_cast<uint8_t>(TurnDirection::left) ||
+        !utils::isValidPlayerName(std::string(playerName, playerNameSize))) {
         throw EncoderDecoderError();
     }
 }
@@ -59,13 +60,13 @@ Event::Event(const unsigned char *buffer, size_t size, size_t *bytesUsed) : even
     eventNo = be32toh(binaryToNum<uint32_t>(buffer + 4));
     eventType = EventType(buffer[8]);
     const uint32_t eventHeaderSize = 9;
-    *bytesUsed = len + sizeof(uint32_t);
+    *bytesUsed = len + sizeof(uint32_t) + sizeof(uint32_t);
 
     if (len + 4 > size) {
         throw EncoderDecoderError();
     }
 
-    uint32_t crc32Got = be32toh(binaryToNum<uint32_t>(buffer + len));
+    uint32_t crc32Got = be32toh(binaryToNum<uint32_t>(buffer + len + sizeof(len)));
     uint32_t crc32Expected = utils::crc32(buffer, len);
 
     if (crc32Got != crc32Expected) {
@@ -89,7 +90,7 @@ Event::Event(const unsigned char *buffer, size_t size, size_t *bytesUsed) : even
 uint32_t Event::encode(unsigned char *buffer) const {
     const unsigned char *bufferFirstPos = buffer;
     uint32_t encodedSize = getEncodedSize();
-    auto len = static_cast<uint32_t>(encodedSize - sizeof(uint32_t));
+    auto len = static_cast<uint32_t>(encodedSize - sizeof(uint32_t) - sizeof(uint32_t));
     numToBinary(htobe32(len), buffer);
     numToBinary(htobe32(eventNo), buffer + 4);
     buffer[8] = static_cast<uint8_t>(eventType);
@@ -105,7 +106,7 @@ uint32_t Event::encode(unsigned char *buffer) const {
         buffer += std::get<EventGameOver>(eventData).encode(buffer);
     }
 
-    uint32_t crc32 = utils::crc32(bufferFirstPos, len);
+    uint32_t crc32 = utils::crc32(bufferFirstPos, len + sizeof(uint32_t));
     numToBinary(htobe32(crc32), buffer);
     return encodedSize;
 }

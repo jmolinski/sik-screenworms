@@ -25,14 +25,7 @@ class MQManager {
     std::vector<Event> currentGameEvents;
     gameid_t currentlyBroadcastedGameId;
 
-    bool hasPendingMessagesForCurrentGame() const {
-        for (const auto &queue : queues) {
-            if (queue.second < currentGameEvents.size()) {
-                return true;
-            }
-        }
-        return false;
-    }
+    bool hasPendingMessagesForCurrentGame() const;
 
   public:
     bool isEmpty() const {
@@ -41,30 +34,9 @@ class MQManager {
 
     void schedule(uint32_t gameId, EventType eventType, const GameEventVariant &event);
     MessageAndRecipient getNextMessage();
-
-    void ack(const utils::fingerprint_t &fingerprint, uint32_t nextExpectedEventNo) {
-        auto &clientNextWanted = queues.find(fingerprint)->second;
-        if (nextGames.empty()) {
-            clientNextWanted = std::min(static_cast<uint32_t>(currentGameEvents.size()), nextExpectedEventNo);
-        }
-    }
-
-    void dropQueue(const utils::fingerprint_t &fingerprint) {
-        queues.erase(fingerprint);
-        auto it = clientsToServeSchedule.begin();
-        while (it != clientsToServeSchedule.end()) {
-            if (*it == fingerprint) {
-                clientsToServeSchedule.erase(it);
-                return;
-            }
-            it++;
-        }
-    }
-
-    void addQueue(const utils::fingerprint_t &fingerprint, uint32_t nextExpectedEventNo) {
-        queues.insert({fingerprint, nextExpectedEventNo});
-        clientsToServeSchedule.push_back(fingerprint);
-    }
+    void ack(const utils::fingerprint_t &fingerprint, uint32_t nextExpectedEventNo);
+    void dropQueue(const utils::fingerprint_t &fingerprint);
+    void addQueue(const utils::fingerprint_t &fingerprint, uint32_t nextExpectedEventNo);
 };
 
 struct Watcher {
@@ -72,7 +44,7 @@ struct Watcher {
     uint64_t sessionId;
 };
 
-struct Player {
+struct Player { // todo is ready to play -- żeby wystarczyło że raz wyśle turn direction != 0
     utils::fingerprint_t fingerprint;
     playername_t playerName;
 

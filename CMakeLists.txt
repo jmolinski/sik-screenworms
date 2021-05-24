@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 project(sik_networms)
 
-set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Werror -Wpedantic -O1 -std=c++17 -Wformat=2 -Wfloat-equal -Wconversion -Wshift-overflow=2 -Wduplicated-cond -Wcast-qual -Wcast-align -fsanitize=address -fsanitize=undefined -fno-sanitize-recover -fstack-protector")
+set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Werror -Wpedantic -O2 -std=c++17 -Wformat=2 -Wfloat-equal -Wconversion -Wshift-overflow=2 -Wduplicated-cond -Wcast-qual -Wcast-align -fsanitize=address -fsanitize=undefined -fno-sanitize-recover -fstack-protector")
 
 #set(CMAKE_CXX_FLAGS "-O2 -std=c++17")
 

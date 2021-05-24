@@ -9,7 +9,7 @@ struct ServerConfig {
     uint16_t port;
     uint32_t rngSeed;
     uint8_t turningSpeed;
-    uint8_t roundsPerSec;
+    uint16_t roundsPerSec;
     uint16_t boardWidth, boardHeight;
 
     explicit ServerConfig(std::unordered_map<char, std::string> params);

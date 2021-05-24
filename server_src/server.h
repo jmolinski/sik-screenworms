@@ -12,7 +12,6 @@ class Server {
     ServerConfig config;
     UdpSocket sock;
     timer_fd_t turnTimerFd;
-    timer_fd_t expirationTimerFd;
     GameManager gameManager;
 
     std::unordered_map<utils::fingerprint_t, std::pair<sockaddr_storage, socklen_t>> clientAddrs;
