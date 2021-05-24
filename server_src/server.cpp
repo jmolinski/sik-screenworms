@@ -8,7 +8,7 @@ constexpr unsigned PFDS_COUNT = 2;
 constexpr unsigned SOCKET_PFDS_IDX = 0;
 constexpr unsigned TURN_TIMER_PFDS_IDX = 1;
 constexpr size_t INCOMING_MSG_BUFFER_SIZE = 100;
-constexpr unsigned CONNECTION_EXPIRATION_TIME_SEC = 2; // TODO
+constexpr unsigned CONNECTION_EXPIRATION_TIME_SEC = 2;
 
 Server::Server(ServerConfig parsedConfig)
     : config(parsedConfig),
@@ -68,7 +68,20 @@ void Server::sendMessageToClient() {
 }
 
 void Server::cleanupObsoleteConnections() {
-    // std::cerr << "conn cleanup" << std::endl; // TODO
+    auto currentTime = utils::getCurrentTimestamp().time_since_epoch().count();
+    std::vector<utils::fingerprint_t> connsToDrop;
+
+    for (auto &lastConn : lastCommunicationTs) {
+        auto lastConnTime = lastConn.second.time_since_epoch().count();
+        if ((currentTime - lastConnTime) > (CONNECTION_EXPIRATION_TIME_SEC * US_IN_SECOND)) {
+            gameManager.dropConnection(lastConn.first);
+            clientAddrs.erase(lastConn.first);
+            connsToDrop.push_back(lastConn.first);
+        }
+    }
+    for (const auto &fprint : connsToDrop) {
+        lastCommunicationTs.erase(fprint);
+    }
 }
 
 [[noreturn]] void Server::run() {

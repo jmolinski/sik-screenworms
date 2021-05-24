@@ -83,7 +83,7 @@ void MQManager::addQueue(const utils::fingerprint_t &fingerprint, uint32_t nextE
 GameManager::GameManager(uint32_t rngSeed, uint8_t turningSpeed, uint16_t maxx, uint16_t maxy, timer_fd_t turnTimerFd,
                          long turnIntervalNs)
     : gameId(0), gameStarted(false), rng(rngSeed), maxx(maxx), maxy(maxy), turningSpeed(turningSpeed),
-      turnTimerFd(turnTimerFd), turnIntervalNs(turnIntervalNs), timerSet(false) {
+      turnTimerFd(turnTimerFd), turnIntervalNs(turnIntervalNs) {
 }
 
 void GameManager::handleMessageFromWatcher(const utils::fingerprint_t &fingerprint, const ClientToServerMessage &msg) {
@@ -136,6 +136,22 @@ void GameManager::handleMessage(const utils::fingerprint_t &fingerprint, ClientT
         handleMessageFromWatcher(fingerprint, msg);
     } else {
         handleMessageFromPlayer(fingerprint, msg);
+    }
+}
+
+void GameManager::dropConnection(const utils::fingerprint_t &fingerprint) {
+    mqManager.dropQueue(fingerprint);
+
+    if (watchers.find(fingerprint) != watchers.end()) {
+        watchers.erase(fingerprint);
+        return;
+    }
+
+    for (auto &p : players) {
+        if (p.second.fingerprint == fingerprint) {
+            p.second.isDisconnected = true;
+            break;
+        }
     }
 }
 
@@ -201,7 +217,7 @@ void GameManager::startGame() {
     for (auto &p : players) {
         auto &player = p.second;
         player.takesPartInCurrentGame = true;
-        player.isEliminated = false; // TODO używane?
+        player.isEliminated = false;
 
         player.coords.x = rng.generateNext() % maxx + 0.5;
         player.coords.y = rng.generateNext() % maxy + 0.5;
@@ -224,7 +240,6 @@ void GameManager::startGame() {
     }
     if (gameStarted) {
         utils::setIntervalTimer(turnTimerFd, turnIntervalNs);
-        timerSet = true;
     }
 }
 
@@ -232,9 +247,14 @@ void GameManager::endGame() {
     emitGameOver();
     gameStarted = false;
 
-    if (timerSet) {
-        timerSet = false;
-        // TODO disable timer
+    std::vector<playername_t> playersToErase;
+    for (const auto &p : players) {
+        if (p.second.isDisconnected) {
+            playersToErase.push_back(p.first);
+        }
+    }
+    for (const auto &pname : playersToErase) {
+        players.erase(pname);
     }
 }
 

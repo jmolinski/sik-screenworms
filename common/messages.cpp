@@ -1,5 +1,6 @@
 #include "messages.h"
 #include "crc32.h"
+#include <algorithm>
 #include <cstring>
 #include <iostream>
 
@@ -132,7 +133,7 @@ EventNewGame::EventNewGame(uint32_t maxx, uint32_t maxy, const std::vector<std::
     this->maxx = maxx;
     this->maxy = maxy;
 
-    std::ostringstream os; // TODO ładniej
+    std::ostringstream os;
     for (const auto &pname : playerNames) {
         os << pname << ' ';
     }
@@ -176,6 +177,7 @@ std::unordered_map<uint8_t, std::string> EventNewGame::parsedPlayers() const {
     std::stringstream ss;
     ss.write(buff, playersFieldSize);
     std::string playerName;
+    std::vector<std::string> listOfNames;
 
     std::unordered_map<uint8_t, std::string> playerNames;
     while (ss >> playerName) {
@@ -183,6 +185,20 @@ std::unordered_map<uint8_t, std::string> EventNewGame::parsedPlayers() const {
             throw EncoderDecoderError();
         }
         playerNames.insert({playerNames.size(), playerName});
+        listOfNames.push_back(playerName);
+    }
+
+    std::vector<std::string> sortedListOfNames(listOfNames);
+    std::sort(sortedListOfNames.begin(), sortedListOfNames.end());
+    sortedListOfNames.erase(std::unique(sortedListOfNames.begin(), sortedListOfNames.end()), sortedListOfNames.end());
+
+    if (sortedListOfNames.size() != listOfNames.size()) {
+        throw EncoderDecoderError();
+    }
+    for (size_t i = 0; i < sortedListOfNames.size(); i++) {
+        if (sortedListOfNames[i] != listOfNames[i]) {
+            throw EncoderDecoderError();
+        }
     }
 
     return playerNames;

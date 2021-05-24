@@ -84,7 +84,6 @@ class GameManager {
 
     timer_fd_t turnTimerFd;
     long turnIntervalNs;
-    bool timerSet;
 
     void handleMessageFromWatcher(const utils::fingerprint_t &, const ClientToServerMessage &);
     void handleMessageFromPlayer(const utils::fingerprint_t &, const ClientToServerMessage &);
@@ -105,6 +104,7 @@ class GameManager {
                 long turnIntervalNs);
     void runTurn();
     void handleMessage(const utils::fingerprint_t &fingerprint, ClientToServerMessage msg);
+    void dropConnection(const utils::fingerprint_t &fingerprint);
 
     MQManager mqManager;
 };
