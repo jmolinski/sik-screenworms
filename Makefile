@@ -1,9 +1,10 @@
 CXX=g++
-CPPFLAGS= -std=c++17 -O2 -Wall -Wextra -Werror -Wpedantic
+CPPFLAGS= -std=c++17 -O2 -Wall -Wextra
 LDFLAGS=
 
-CLIENT_SRCS= client_src/main.cpp utils/getopt_wrapper.cpp utils/utils.cpp
-SERVER_SRCS= server_src/main.cpp utils/getopt_wrapper.cpp utils/utils.cpp
+COMMON_SRCS= common/crc32.cpp common/fingerprint.cpp common/getopt_wrapper.cpp common/messages.cpp common/misc.cpp common/sockets.cpp common/time_utils.cpp
+CLIENT_SRCS= client_src/main.cpp client_src/client.cpp client_src/client_config.cpp $(COMMON_SRCS)
+SERVER_SRCS= server_src/main.cpp server_src/server.cpp server_src/server_config.cpp server_src/game.cpp $(COMMON_SRCS)
 CLIENT_OBJS=$(subst .cpp,.o,$(CLIENT_SRCS))
 SERVER_OBJS=$(subst .cpp,.o,$(SERVER_SRCS))
 
