@@ -1,5 +1,6 @@
 #include "sockets.h"
 #include "fingerprint.h"
+#include <fcntl.h>
 #include <iostream>
 #include <netinet/tcp.h>
 #include <unistd.h>
@@ -29,12 +30,7 @@ UdpSocket::UdpSocket(addrinfo addrInfo, const std::string &hostname, uint16_t po
                 int no = 0;
                 rv += setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &no, sizeof(int));
             }
-            if (rv != 0) {
-                close(fd);
-                fd = -1;
-                continue;
-            }
-            if (bind(fd, p->ai_addr, p->ai_addrlen) == -1) {
+            if ((rv != 0) || (bind(fd, p->ai_addr, p->ai_addrlen) == -1)) {
                 close(fd);
                 fd = -1;
                 continue;
@@ -52,16 +48,11 @@ UdpSocket::UdpSocket(addrinfo addrInfo, const std::string &hostname, uint16_t po
         exit(EXIT_FAILURE);
     }
 
-    if (doBind) {
-        std::cout << "Successfully created socket: " << utils::fingerprintNetuser(info.ai_addr) << std::endl;
-    }
-
     freeaddrinfo(servinfo);
 }
 
 UdpSocket::~UdpSocket() {
     if (fd != -1) {
-        std::cout << "Closing UDP socket" << std::endl;
         close(fd);
     }
 }
@@ -87,7 +78,8 @@ TcpSocket::TcpSocket(addrinfo addrInfo, const std::string &hostname, uint16_t po
             continue;
         }
         int yes = 1;
-        if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes)) != 0) {
+        if ((setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes)) != 0) ||
+            (fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK) == -1)) {
             close(fd);
             fd = -1;
             continue;
@@ -104,7 +96,6 @@ TcpSocket::TcpSocket(addrinfo addrInfo, const std::string &hostname, uint16_t po
 
 TcpSocket::~TcpSocket() {
     if (fd != -1) {
-        std::cout << "Closing TCP socket" << std::endl;
         close(fd);
     }
 }
@@ -128,9 +119,12 @@ void TcpSocket::flushOutgoing() {
     ssize_t written = write(fd, outBuffer.data(), outBuffer.size());
     if (written < 0) {
         if (errno == EPIPE) {
-            throw std::runtime_error("peer clossed connection");
+            std::cerr << "peer closed TCP connection" << std::endl;
+            exit(EXIT_FAILURE);
         }
-        perror("problem when trying to write to tcp socket");
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            perror("problem when trying to write to tcp socket");
+        }
     } else {
         auto offset = static_cast<size_t>(written);
         if (offset == outBuffer.size()) {
@@ -162,10 +156,13 @@ std::pair<bool, std::string> TcpSocket::readline() {
     static char buffer[TCP_BUFF_SIZE];
     ssize_t readBytes = read(fd, &buffer, TCP_BUFF_SIZE);
     if (readBytes == 0) {
-        throw std::runtime_error("peer clossed connection");
+        std::cerr << "peer closed TCP connection" << std::endl;
+        exit(EXIT_FAILURE);
     }
     if (readBytes < 0) {
-        perror("error happened when trying to read from tcp socket");
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            perror("error happened when trying to read from tcp socket");
+        }
         return {false, ""};
     }
 

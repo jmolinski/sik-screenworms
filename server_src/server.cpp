@@ -3,7 +3,7 @@
 #include <poll.h>
 #include <unistd.h>
 
-constexpr int POLL_TIMEOUT = 1;
+constexpr int POLL_TIMEOUT = 5;
 constexpr unsigned PFDS_COUNT = 2;
 constexpr unsigned TURN_TIMER_PFDS_IDX = 0;
 constexpr unsigned SOCKET_PFDS_IDX = 1;
@@ -16,7 +16,6 @@ Server::Server(ServerConfig parsedConfig)
       gameManager(config.rngSeed, config.turningSpeed, config.boardWidth, config.boardHeight) {
     // turnTimerFd = utils::createArmedTimer(100 * NS_IN_MS); // TODO ustawienie tury
     long roundTime = NS_IN_SECOND / config.roundsPerSec;
-    std::cout << "czas rundy " << roundTime << std::endl;
     turnTimerFd = utils::createArmedTimer(roundTime); // TODO ustawienie tury
 }
 
@@ -25,9 +24,12 @@ void Server::readMessageFromClient() {
 
     sockaddr_storage their_addr{};
     socklen_t addr_len = sizeof their_addr;
-    ssize_t numbytes = recvfrom(sock.getFd(), buf, INCOMING_MSG_BUFFER_SIZE - 1, 0, (sockaddr *)&their_addr, &addr_len);
+    ssize_t numbytes =
+        recvfrom(sock.getFd(), buf, INCOMING_MSG_BUFFER_SIZE - 1, MSG_DONTWAIT, (sockaddr *)&their_addr, &addr_len);
     if (numbytes == -1) {
-        perror("Error in recvfrom. Skipping this datagram processing.");
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            perror("Error in recvfrom. Skipping this datagram processing.");
+        }
         return;
     }
 
@@ -36,7 +38,6 @@ void Server::readMessageFromClient() {
     if (clientAddrs.find(fingerprint) == clientAddrs.end()) {
         clientAddrs.insert({fingerprint, {their_addr, addr_len}});
     }
-    std::cout << "DEBUG got packet from " << fingerprint << std::endl;
 
     try {
         ClientToServerMessage m(buf, static_cast<size_t>(numbytes));
@@ -58,7 +59,9 @@ void Server::sendMessageToClient() {
     ssize_t numbytes = sendto(sock.getFd(), dataBuffer, payloadSize, MSG_DONTWAIT, (sockaddr *)&clientAddrInfo.first,
                               clientAddrInfo.second);
     if (numbytes == -1) {
-        perror("sendto failed.");
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            perror("sendto failed.");
+        }
         return;
     }
 

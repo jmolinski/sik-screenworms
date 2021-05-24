@@ -9,7 +9,7 @@ constexpr unsigned PFDS_COUNT = 3;
 constexpr unsigned TIMER_PFDS_IDX = 0;
 constexpr unsigned SERVER_SOCK_PFDS_IDX = 1;
 constexpr unsigned GUI_SOCK_PFDS_IDX = 2;
-constexpr unsigned long MSG_TO_SERVER_INTERVAL_MS = 200; // TODO ustawienie interwału 30 ms
+constexpr unsigned long MSG_TO_SERVER_INTERVAL_MS = 30;
 constexpr size_t INBOUND_SERVER_MESSAGE_BUFFER_SIZE = MAX_UDP_DATA_FIELD_SIZE + 10;
 
 Client::Client(ClientConfig conf)
@@ -25,17 +25,21 @@ void Client::validateEvent(const Event &event) const {
     while (true) {
         if (event.eventType == EventType::newGame) {
             const auto &e = std::get<EventNewGame>(event.eventData);
-            if (e.parsedPlayers().size() > MAX_PLAYERS) {
+            try {
+                if (event.eventNo != 0 || e.parsedPlayers().size() > MAX_PLAYERS) {
+                    break;
+                }
+            } catch (const EncoderDecoderError &e) {
                 break;
             }
         } else if (event.eventType == EventType::pixel) {
             const auto &e = std::get<EventPixel>(event.eventData);
-            if (e.playerNumber > playersInGame || e.x > maxx || e.y > maxy) {
+            if (e.playerNumber >= playersInGame || e.x >= maxx || e.y >= maxy) {
                 break;
             }
         } else if (event.eventType == EventType::playerEliminated) {
             const auto &e = std::get<EventPlayerEliminated>(event.eventData);
-            if (e.playerNumber > playersInGame) {
+            if (e.playerNumber >= playersInGame) {
                 break;
             }
         }
@@ -75,7 +79,7 @@ void Client::processMessageFromServerWithMismatchedGameId(const ServerToClientMe
             const auto &newGame = std::get<EventNewGame>(event.eventData);
             maxx = newGame.maxx;
             maxy = newGame.maxy;
-            playerNames = newGame.parsedPlayers(); // TODO throws
+            playerNames = newGame.parsedPlayers();
             playersInGame = static_cast<uint8_t>(playerNames.size());
             readInEventsListOfCurrentGame(msg);
             return;
@@ -106,7 +110,7 @@ void Client::readMessageFromServer() {
     ssize_t numbytes = recv(serverSock.getFd(), buf, INBOUND_SERVER_MESSAGE_BUFFER_SIZE, MSG_DONTWAIT);
     if (numbytes == -1) {
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
-            perror("Error in recvfrom. Skipping this datagram processing.");
+            perror("Error in recv. Skipping this datagram processing.");
         }
         return;
     }
@@ -134,16 +138,11 @@ void Client::sendMessageToServer() {
         return;
     }
 
-    std::cout << "DEBUG packet to server sent" << std::endl;
-
     messageToServer.ready = false;
 }
 
 void Client::enqueueMessageToServer() {
-    std::cerr << "Enqueue message" << std::endl;
-    // TODO left
-    auto direction = rand() % 2 == 0 ? TurnDirection::left : TurnDirection::right;
-    ClientToServerMessage msg(sessionId, direction, nextWantedEventNo, config.playerName);
+    ClientToServerMessage msg(sessionId, turnDirection, nextWantedEventNo, config.playerName);
     messageToServer.size = msg.encode(messageToServer.data);
     messageToServer.ready = true;
 }
@@ -153,8 +152,6 @@ void Client::readUpdateFromGui() {
     if (!success) {
         return;
     }
-
-    std::cout << "DEBUG msg from tcp: " << line << std::endl;
 
     if (line == "LEFT_KEY_DOWN") {
         turnDirection = TurnDirection::left;
@@ -196,7 +193,6 @@ void Client::readUpdateFromGui() {
             readUpdateFromGui();
         }
         if (guiSock.hasPendingOutgoingData() && pfds[GUI_SOCK_PFDS_IDX].revents & POLLOUT) {
-            std::cerr << "Flush to gui" << std::endl;
             guiSock.flushOutgoing();
         }
         if (pfds[SERVER_SOCK_PFDS_IDX].revents & POLLIN) {
