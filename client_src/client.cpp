@@ -16,9 +16,10 @@ Client::Client(ClientConfig conf)
     : config(std::move(conf)), serverSock({0, AF_UNSPEC, SOCK_DGRAM, 0, 0, nullptr, nullptr, nullptr},
                                           config.gameServer, config.serverPort, false),
       guiSock({0, AF_UNSPEC, SOCK_STREAM, 0, 0, nullptr, nullptr, nullptr}, config.guiServer, config.guiPort),
-      messageToServer{{0}, 0, false}, sessionId(utils::timestampToUll(utils::getCurrentTimestamp())),
-      turnDirection(TurnDirection::straight), gameId(-1) {
-    timerFd = utils::createArmedTimer(MSG_TO_SERVER_INTERVAL_MS * NS_IN_MS);
+      timerFd(utils::createTimer()), messageToServer{{0}, 0, false},
+      sessionId(utils::timestampToUll(utils::getCurrentTimestamp())), turnDirection(TurnDirection::straight),
+      gameId(-1) {
+    utils::setIntervalTimer(timerFd, MSG_TO_SERVER_INTERVAL_MS * NS_IN_MS);
 }
 
 void Client::validateEvent(const Event &event) const {
@@ -134,7 +135,9 @@ void Client::sendMessageToServer() {
     ssize_t numbytes = sendto(serverSock.getFd(), messageToServer.data, messageToServer.size, MSG_DONTWAIT,
                               serverSock.getAddrInfo().ai_addr, serverSock.getAddrInfo().ai_addrlen);
     if (numbytes == -1) {
-        perror("sendto failed.");
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            perror("sendto failed.");
+        }
         return;
     }
 
@@ -163,8 +166,6 @@ void Client::readUpdateFromGui() {
 }
 
 [[noreturn]] void Client::run() {
-    std::cout << "Starting client main loop." << std::endl;
-
     pollfd pfds[PFDS_COUNT];
     pfds[TIMER_PFDS_IDX].fd = timerFd;
     pfds[TIMER_PFDS_IDX].events = POLLIN;

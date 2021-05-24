@@ -80,8 +80,10 @@ void MQManager::addQueue(const utils::fingerprint_t &fingerprint, uint32_t nextE
     clientsToServeSchedule.push_back(fingerprint);
 }
 
-GameManager::GameManager(uint32_t rngSeed, uint8_t turningSpeed, uint16_t maxx, uint16_t maxy)
-    : gameId(0), gameStarted(false), rng(rngSeed), maxx(maxx), maxy(maxy), turningSpeed(turningSpeed) {
+GameManager::GameManager(uint32_t rngSeed, uint8_t turningSpeed, uint16_t maxx, uint16_t maxy, timer_fd_t turnTimerFd,
+                         long turnIntervalNs)
+    : gameId(0), gameStarted(false), rng(rngSeed), maxx(maxx), maxy(maxy), turningSpeed(turningSpeed),
+      turnTimerFd(turnTimerFd), turnIntervalNs(turnIntervalNs), timerSet(false) {
 }
 
 void GameManager::handleMessageFromWatcher(const utils::fingerprint_t &fingerprint, const ClientToServerMessage &msg) {
@@ -144,8 +146,7 @@ void GameManager::eliminatePlayer(Player &player) {
     emitPlayerEliminatedEvent(player);
 
     if (alivePlayers < 2) {
-        emitGameOver();
-        gameStarted = false;
+        endGame();
     }
 }
 
@@ -220,6 +221,20 @@ void GameManager::startGame() {
             // Game might have ended on player elimination above.
             break;
         }
+    }
+    if (gameStarted) {
+        utils::setIntervalTimer(turnTimerFd, turnIntervalNs);
+        timerSet = true;
+    }
+}
+
+void GameManager::endGame() {
+    emitGameOver();
+    gameStarted = false;
+
+    if (timerSet) {
+        timerSet = false;
+        // TODO disable timer
     }
 }
 

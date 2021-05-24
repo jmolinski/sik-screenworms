@@ -4,6 +4,7 @@
 #include "../common/fingerprint.h"
 #include "../common/messages.h"
 #include "../common/rng.h"
+#include "../common/time_utils.h"
 #include <deque>
 #include <map>
 #include <set>
@@ -81,10 +82,15 @@ class GameManager {
     uint8_t turningSpeed;
     uint8_t alivePlayers;
 
+    timer_fd_t turnTimerFd;
+    long turnIntervalNs;
+    bool timerSet;
+
     void handleMessageFromWatcher(const utils::fingerprint_t &, const ClientToServerMessage &);
     void handleMessageFromPlayer(const utils::fingerprint_t &, const ClientToServerMessage &);
     bool canStartGame();
     void startGame();
+    void endGame();
     void eliminatePlayer(Player &);
 
     void saveEvent(EventType eventType, const GameEventVariant &event);
@@ -95,7 +101,8 @@ class GameManager {
     void emitGameOver();
 
   public:
-    GameManager(uint32_t rngSeed, uint8_t turningSpeed, uint16_t maxx, uint16_t maxy);
+    GameManager(uint32_t rngSeed, uint8_t turningSpeed, uint16_t maxx, uint16_t maxy, timer_fd_t turnTimerFd,
+                long turnIntervalNs);
     void runTurn();
     void handleMessage(const utils::fingerprint_t &fingerprint, ClientToServerMessage msg);
 

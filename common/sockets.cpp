@@ -47,8 +47,6 @@ UdpSocket::UdpSocket(addrinfo addrInfo, const std::string &hostname, uint16_t po
         std::cerr << "Failed to create socket" << std::endl;
         exit(EXIT_FAILURE);
     }
-
-    freeaddrinfo(servinfo);
 }
 
 UdpSocket::~UdpSocket() {
@@ -72,13 +70,9 @@ TcpSocket::TcpSocket(addrinfo addrInfo, const std::string &hostname, uint16_t po
         if ((fd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
             continue;
         }
-        if (connect(fd, p->ai_addr, p->ai_addrlen) == -1) {
-            close(fd);
-            fd = -1;
-            continue;
-        }
         int yes = 1;
-        if ((setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes)) != 0) ||
+        if ((connect(fd, p->ai_addr, p->ai_addrlen) == -1) ||
+            (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes)) != 0) ||
             (fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK) == -1)) {
             close(fd);
             fd = -1;
@@ -86,7 +80,6 @@ TcpSocket::TcpSocket(addrinfo addrInfo, const std::string &hostname, uint16_t po
         }
         break;
     }
-    freeaddrinfo(servinfo);
 
     if (fd == -1) {
         std::cerr << "Failed to create TCP socket" << std::endl;

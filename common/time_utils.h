@@ -11,7 +11,8 @@ constexpr long US_IN_SECOND = 1'000'000;
 namespace utils {
     using time_stamp_t = std::chrono::time_point<std::chrono::system_clock, std::chrono::microseconds>;
 
-    timer_fd_t createArmedTimer(long intervalMs);
+    timer_fd_t createTimer();
+    void setIntervalTimer(timer_fd_t timerFd, long intervalNsec);
     time_stamp_t getCurrentTimestamp();
     uint64_t timestampToUll(time_stamp_t ts);
 } // namespace utils

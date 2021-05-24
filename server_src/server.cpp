@@ -5,18 +5,17 @@
 
 constexpr int POLL_TIMEOUT = 5;
 constexpr unsigned PFDS_COUNT = 2;
-constexpr unsigned TURN_TIMER_PFDS_IDX = 0;
-constexpr unsigned SOCKET_PFDS_IDX = 1;
+constexpr unsigned SOCKET_PFDS_IDX = 0;
+constexpr unsigned TURN_TIMER_PFDS_IDX = 1;
 constexpr size_t INCOMING_MSG_BUFFER_SIZE = 100;
 constexpr unsigned CONNECTION_EXPIRATION_TIME_SEC = 2; // TODO
 
 Server::Server(ServerConfig parsedConfig)
     : config(parsedConfig),
       sock(addrinfo{AI_PASSIVE, AF_INET6, SOCK_DGRAM, 0, 0, nullptr, nullptr, nullptr}, "", config.port, true),
-      gameManager(config.rngSeed, config.turningSpeed, config.boardWidth, config.boardHeight) {
-    // turnTimerFd = utils::createArmedTimer(100 * NS_IN_MS); // TODO ustawienie tury
-    long roundTime = NS_IN_SECOND / config.roundsPerSec;
-    turnTimerFd = utils::createArmedTimer(roundTime); // TODO ustawienie tury
+      turnTimerFd(utils::createTimer()),
+      gameManager(config.rngSeed, config.turningSpeed, config.boardWidth, config.boardHeight, turnTimerFd,
+                  NS_IN_SECOND / config.roundsPerSec) {
 }
 
 void Server::readMessageFromClient() {
@@ -73,13 +72,11 @@ void Server::cleanupObsoleteConnections() {
 }
 
 [[noreturn]] void Server::run() {
-    std::cout << "Starting server main loop." << std::endl;
-
     pollfd pfds[PFDS_COUNT];
-    pfds[TURN_TIMER_PFDS_IDX].fd = turnTimerFd;
-    pfds[TURN_TIMER_PFDS_IDX].events = POLLIN;
     pfds[SOCKET_PFDS_IDX].fd = sock.getFd();
     pfds[SOCKET_PFDS_IDX].events = POLLIN;
+    pfds[TURN_TIMER_PFDS_IDX].fd = turnTimerFd;
+    pfds[TURN_TIMER_PFDS_IDX].events = POLLIN;
 
     while (true) {
         int numEvents = poll(pfds, PFDS_COUNT, POLL_TIMEOUT);

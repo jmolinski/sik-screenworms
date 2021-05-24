@@ -3,16 +3,21 @@
 #include <sys/timerfd.h>
 
 namespace utils {
-    timer_fd_t createArmedTimer(long intervalNsec) {
-        time_t intervalSec = intervalNsec / NS_IN_SECOND;
-        intervalNsec = intervalNsec % NS_IN_SECOND;
+    timer_fd_t createTimer() {
+        timer_fd_t timerFd;
+        if ((timerFd = timerfd_create(CLOCK_MONOTONIC, 0)) == -1) {
+            perror(nullptr);
+            exit(EXIT_FAILURE);
+        }
+        return timerFd;
+    }
 
+    void setIntervalTimer(timer_fd_t timerFd, long intervalNsec) {
         timespec now{};
         if (clock_gettime(CLOCK_MONOTONIC, &now) == -1) {
             perror(nullptr);
             exit(EXIT_FAILURE);
         }
-        // todo
 
         now.tv_nsec += intervalNsec;
         if (now.tv_nsec > NS_IN_SECOND) {
@@ -20,19 +25,11 @@ namespace utils {
             now.tv_sec += 1;
         }
 
-        timer_fd_t timerFd;
-        if ((timerFd = timerfd_create(CLOCK_MONOTONIC, 0)) == -1) {
-            perror(nullptr);
-            exit(EXIT_FAILURE);
-        }
-
-        itimerspec timerSettings = {{intervalSec, intervalNsec}, now};
+        itimerspec timerSettings = {{0, intervalNsec}, now};
         if (timerfd_settime(timerFd, TFD_TIMER_ABSTIME, &timerSettings, nullptr) == -1) {
             perror(nullptr);
             exit(EXIT_FAILURE);
         }
-
-        return timerFd;
     }
 
     time_stamp_t getCurrentTimestamp() {
