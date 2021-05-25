@@ -95,7 +95,7 @@ void GameManager::handleMessageFromWatcher(const utils::fingerprint_t &fingerpri
             }
         }
         if (watchers.size() + players.size() < MAX_PLAYERS) {
-            watchers.insert({fingerprint, {fingerprint, msg.sessionId}});
+            watchers.insert({fingerprint, {msg.sessionId}});
             mqManager.addQueue(fingerprint, msg.nextExpectedEventNo);
         }
     } else {

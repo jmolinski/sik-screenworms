@@ -27,7 +27,7 @@ void Client::validateEvent(const Event &event) const {
         if (event.eventType == EventType::newGame) {
             const auto &e = std::get<EventNewGame>(event.eventData);
             try {
-                if (event.eventNo != 0 || e.parsedPlayers().size() > MAX_PLAYERS) {
+                if (event.eventNo != 0 || e.parsedPlayers().size() < 2) {
                     break;
                 }
             } catch (const EncoderDecoderError &e) {
