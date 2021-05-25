@@ -80,6 +80,7 @@ TcpSocket::TcpSocket(addrinfo addrInfo, const std::string &hostname, uint16_t po
         }
         break;
     }
+    freeaddrinfo(servinfo);
 
     if (fd == -1) {
         std::cerr << "Failed to create TCP socket" << std::endl;
@@ -134,13 +135,13 @@ void TcpSocket::flushOutgoing() {
 
 std::pair<bool, std::string> TcpSocket::readline() {
     if (hasAvailableLine()) {
-        for (size_t i = 0;; i++) {
+        for (unsigned i = 0;; i++) {
             if (inBuffer[i] != '\n') {
                 continue;
             }
 
             std::string line(inBuffer.data(), inBuffer.data() + i);
-            inBuffer.resize(inBuffer.size() - i - 1);
+            inBuffer.erase(inBuffer.begin(), inBuffer.begin() + i + 1);
             unreadNewlines--;
             return {true, line};
         }

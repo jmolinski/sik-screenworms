@@ -13,6 +13,7 @@ namespace utils {
 
     timer_fd_t createTimer();
     void setIntervalTimer(timer_fd_t timerFd, long intervalNsec);
+    void clearTimer(timer_fd_t timerFd);
     time_stamp_t getCurrentTimestamp();
     uint64_t timestampToUll(time_stamp_t ts);
 } // namespace utils

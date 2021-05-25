@@ -45,7 +45,7 @@ struct Watcher {
     uint64_t sessionId;
 };
 
-struct Player { // todo is ready to play -- żeby wystarczyło że raz wyśle turn direction != 0
+struct Player {
     utils::fingerprint_t fingerprint;
     playername_t playerName;
 
@@ -92,6 +92,7 @@ class GameManager {
     void startGame();
     void endGame();
     void eliminatePlayer(Player &);
+    void eraseDisconnectedPlayers();
 
     void saveEvent(EventType eventType, const GameEventVariant &event);
 

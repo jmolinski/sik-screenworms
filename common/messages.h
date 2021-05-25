@@ -16,7 +16,7 @@ class CRC32MismatchError : public std::exception {};
 
 enum struct TurnDirection : uint8_t { straight = 0, right = 1, left = 2 };
 
-enum struct EventType : uint8_t { newGame = 0, pixel = 1, playerEliminated = 2, gameOver = 3 };
+enum struct EventType : uint8_t { newGame = 0, pixel = 1, playerEliminated = 2, gameOver = 3, unknown = 4 };
 
 struct ClientToServerMessage {
     static constexpr size_t minStructSize = 13, maxStructSize = 33;

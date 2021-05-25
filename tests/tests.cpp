@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
             break;
         }
         case 6: {
-            EventNewGame e(100, 2137, {"a", "b"});
+            EventNewGame e(100, 2137, {"abcde", "fghij"});
             auto event1 = Event(420, EventType::newGame, e);
             uint32_t newGameEventSize = event1.getEncodedSize();
 
@@ -70,7 +70,19 @@ int main(int argc, char *argv[]) {
 
             ServerToClientMessage msg2(buffer, encodedSize);
             assert(msg.gameId == msg2.gameId);
-            assert(msg.events[0].eventType == msg2.events[0].eventType);
+            assert(msg.events.size() == 2);
+            assert(msg2.events.size() == 2);
+            std::cout << msg.events.size() << std::endl;
+            auto etype1 = msg.events[0].eventType;
+            auto etype2 = msg2.events[0].eventType;
+            assert(etype1 == etype2);
+
+            auto a = EventType(133);
+            if (a == EventType::unknown) {
+                std::cout << "hello";
+            } else {
+                std::cout << "hello2";
+            };
 
             break;
         }

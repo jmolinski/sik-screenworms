@@ -42,7 +42,6 @@ void Server::readMessageFromClient() {
         ClientToServerMessage m(buf, static_cast<size_t>(numbytes));
         gameManager.handleMessage(fingerprint, m);
     } catch (const EncoderDecoderError &e) {
-        std::cerr << "Error in client message decoding. Skipping this datagram processing." << std::endl;
         return;
     }
 }
@@ -100,13 +99,9 @@ void Server::cleanupObsoleteConnections() {
         }
 
         if (pfds[TURN_TIMER_PFDS_IDX].revents & POLLIN) {
-            uint64_t exp;
-            if (read(turnTimerFd, &exp, sizeof(uint64_t)) != sizeof(uint64_t)) {
-                std::cerr << "Timer read: problem reading turn timer" << std::endl;
-            } else {
-                cleanupObsoleteConnections();
-                gameManager.runTurn();
-            }
+            utils::clearTimer(turnTimerFd);
+            cleanupObsoleteConnections();
+            gameManager.runTurn();
         }
         if (pfds[SOCKET_PFDS_IDX].revents & POLLIN) {
             readMessageFromClient();

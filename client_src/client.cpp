@@ -4,7 +4,7 @@
 #include <poll.h>
 #include <unistd.h>
 
-constexpr int POLL_TIMEOUT = 10;
+constexpr int POLL_TIMEOUT = 5;
 constexpr unsigned PFDS_COUNT = 3;
 constexpr unsigned TIMER_PFDS_IDX = 0;
 constexpr unsigned SERVER_SOCK_PFDS_IDX = 1;
@@ -132,6 +132,9 @@ void Client::readMessageFromServer() {
 }
 
 void Client::sendMessageToServer() {
+    ClientToServerMessage msg(sessionId, turnDirection, nextWantedEventNo, config.playerName);
+    messageToServer.size = msg.encode(messageToServer.data);
+
     ssize_t numbytes = sendto(serverSock.getFd(), messageToServer.data, messageToServer.size, MSG_DONTWAIT,
                               serverSock.getAddrInfo().ai_addr, serverSock.getAddrInfo().ai_addrlen);
     if (numbytes == -1) {
@@ -145,23 +148,23 @@ void Client::sendMessageToServer() {
 }
 
 void Client::enqueueMessageToServer() {
-    ClientToServerMessage msg(sessionId, turnDirection, nextWantedEventNo, config.playerName);
-    messageToServer.size = msg.encode(messageToServer.data);
     messageToServer.ready = true;
 }
 
 void Client::readUpdateFromGui() {
-    auto [success, line] = guiSock.readline();
-    if (!success) {
-        return;
-    }
+    while (guiSock.hasAvailableLine()) {
+        auto [success, line] = guiSock.readline();
+        if (!success) {
+            return;
+        }
 
-    if (line == "LEFT_KEY_DOWN") {
-        turnDirection = TurnDirection::left;
-    } else if (line == "RIGHT_KEY_DOWN") {
-        turnDirection = TurnDirection::right;
-    } else if (line == "LEFT_KEY_UP" || line == "RIGHT_KEY_UP") {
-        turnDirection = TurnDirection::straight;
+        if (line == "LEFT_KEY_DOWN") {
+            turnDirection = TurnDirection::left;
+        } else if (line == "RIGHT_KEY_DOWN") {
+            turnDirection = TurnDirection::right;
+        } else if (line == "LEFT_KEY_UP" || line == "RIGHT_KEY_UP") {
+            turnDirection = TurnDirection::straight;
+        }
     }
 }
 
@@ -183,12 +186,8 @@ void Client::readUpdateFromGui() {
         }
 
         if (pfds[TIMER_PFDS_IDX].revents & POLLIN) {
-            uint64_t exp;
-            if (read(timerFd, &exp, sizeof(uint64_t)) != sizeof(uint64_t)) {
-                std::cerr << "Timer read: problem reading expirations count" << std::endl;
-            } else {
-                enqueueMessageToServer();
-            }
+            utils::clearTimer(timerFd);
+            enqueueMessageToServer();
         }
         if (guiSock.hasAvailableLine() || pfds[GUI_SOCK_PFDS_IDX].revents & POLLIN) {
             readUpdateFromGui();

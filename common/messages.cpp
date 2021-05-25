@@ -61,30 +61,29 @@ Event::Event(const unsigned char *buffer, size_t size, size_t *bytesUsed) : even
     eventNo = be32toh(binaryToNum<uint32_t>(buffer + 4));
     eventType = EventType(buffer[8]);
     const uint32_t eventHeaderSize = 9;
+    const uint32_t eventDataSize = len - 5;
     *bytesUsed = len + sizeof(uint32_t) + sizeof(uint32_t);
 
-    if (len + 4 > size) {
+    if (len + 8 > size) {
         throw EncoderDecoderError();
     }
 
     uint32_t crc32Got = be32toh(binaryToNum<uint32_t>(buffer + len + sizeof(len)));
-    uint32_t crc32Expected = utils::crc32(buffer, len);
-
+    uint32_t crc32Expected = utils::crc32(buffer, len + sizeof(len));
     if (crc32Got != crc32Expected) {
         throw CRC32MismatchError();
     }
 
     if (eventType == EventType::newGame) {
-        eventData = EventNewGame(buffer + eventHeaderSize, len - eventHeaderSize);
+        eventData = EventNewGame(buffer + eventHeaderSize, eventDataSize);
     } else if (eventType == EventType::pixel) {
-        eventData = EventPixel(buffer + eventHeaderSize, len - eventHeaderSize);
+        eventData = EventPixel(buffer + eventHeaderSize, eventDataSize);
     } else if (eventType == EventType::playerEliminated) {
-        eventData = EventPlayerEliminated(buffer + eventHeaderSize, len - eventHeaderSize);
+        eventData = EventPlayerEliminated(buffer + eventHeaderSize, eventDataSize);
     } else if (eventType == EventType::gameOver) {
-        eventData = EventGameOver(buffer + eventHeaderSize, len - eventHeaderSize);
+        eventData = EventGameOver(buffer + eventHeaderSize, eventDataSize);
     } else {
-        // Invalid eventType
-        throw EncoderDecoderError();
+        eventType = EventType::unknown;
     }
 }
 
@@ -200,7 +199,6 @@ std::unordered_map<uint8_t, std::string> EventNewGame::parsedPlayers() const {
             throw EncoderDecoderError();
         }
     }
-
     return playerNames;
 }
 
@@ -233,7 +231,9 @@ ServerToClientMessage::ServerToClientMessage(unsigned char *buffer, size_t size)
         size_t eventSize = 0;
         try {
             Event event(buffer + bytesRead, size - bytesRead, &eventSize);
-            events.push_back(event);
+            if (event.eventType != EventType::unknown) {
+                events.push_back(event);
+            }
         } catch (const CRC32MismatchError &e) {
             // We stop decoding further data, but preserve the first events with correct checksum.
             return;

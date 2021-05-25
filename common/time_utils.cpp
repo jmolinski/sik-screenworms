@@ -1,6 +1,8 @@
 #include "time_utils.h"
 #include <iostream>
+#include <poll.h>
 #include <sys/timerfd.h>
+#include <unistd.h>
 
 namespace utils {
     timer_fd_t createTimer() {
@@ -29,6 +31,17 @@ namespace utils {
         if (timerfd_settime(timerFd, TFD_TIMER_ABSTIME, &timerSettings, nullptr) == -1) {
             perror(nullptr);
             exit(EXIT_FAILURE);
+        }
+    }
+
+    void clearTimer(timer_fd_t timerFd) {
+        pollfd pfds[1];
+        pfds[0].fd = timerFd;
+        pfds[0].events = POLLIN;
+        poll(pfds, 1, 0);
+        if (pfds[0].revents & POLLIN) {
+            uint64_t exp;
+            read(timerFd, &exp, sizeof(uint64_t));
         }
     }
 

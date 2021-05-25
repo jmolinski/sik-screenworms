@@ -89,6 +89,11 @@ GameManager::GameManager(uint32_t rngSeed, uint8_t turningSpeed, uint16_t maxx, 
 void GameManager::handleMessageFromWatcher(const utils::fingerprint_t &fingerprint, const ClientToServerMessage &msg) {
     auto it = watchers.find(fingerprint);
     if (it == watchers.end()) {
+        for (const auto &p : players) {
+            if (p.second.fingerprint == fingerprint) {
+                return;
+            }
+        }
         if (watchers.size() + players.size() < MAX_PLAYERS) {
             watchers.insert({fingerprint, {fingerprint, msg.sessionId}});
             mqManager.addQueue(fingerprint, msg.nextExpectedEventNo);
@@ -107,25 +112,40 @@ void GameManager::handleMessageFromWatcher(const utils::fingerprint_t &fingerpri
 
 void GameManager::handleMessageFromPlayer(const utils::fingerprint_t &fingerprint, const ClientToServerMessage &msg) {
     auto it = players.find(msg.playerName);
-    // TODO walidacje i wszystko
-    if (it == players.end()) {
-        Player p;
-        p.playerName = msg.playerName;
-        p.fingerprint = fingerprint;
-        p.takesPartInCurrentGame = false; // TODO to nie jest respektowane
-        p.isEliminated = false;
-        p.isDisconnected = false;
-        p.isReadyToPlay = false;
-        p.sessionId = msg.sessionId;
-        players.insert({p.playerName, p});
-        mqManager.addQueue(fingerprint, msg.nextExpectedEventNo);
-    } else {
-        auto &p = players.find(msg.playerName)->second;
+
+    if (it != players.end()) {
+        auto &p = it->second;
+        if (p.fingerprint != fingerprint) {
+            return;
+        }
         p.turnDirection = msg.turnDirection;
         if (!gameStarted && msg.turnDirection != TurnDirection::straight) {
             p.isReadyToPlay = true;
         }
         mqManager.ack(fingerprint, msg.nextExpectedEventNo);
+    } else {
+        for (auto &p : players) {
+            if (p.second.fingerprint == fingerprint && msg.sessionId > p.second.sessionId) {
+                dropConnection(fingerprint);
+            }
+        }
+        if (watchers.size() + players.size() == MAX_PLAYERS) {
+            return;
+        }
+
+        Player p;
+        p.playerName = msg.playerName;
+        p.fingerprint = fingerprint;
+        p.takesPartInCurrentGame = false;
+        p.isEliminated = false;
+        p.isDisconnected = false;
+        p.isReadyToPlay = false;
+        if (!gameStarted && msg.turnDirection != TurnDirection::straight) {
+            p.isReadyToPlay = true;
+        }
+        p.sessionId = msg.sessionId;
+        players.insert({p.playerName, p});
+        mqManager.addQueue(fingerprint, msg.nextExpectedEventNo);
     }
 
     if (!gameStarted) {
@@ -156,6 +176,9 @@ void GameManager::dropConnection(const utils::fingerprint_t &fingerprint) {
             p.second.isDisconnected = true;
             break;
         }
+    }
+    if (!gameStarted) {
+        eraseDisconnectedPlayers();
     }
 }
 
@@ -244,6 +267,7 @@ void GameManager::startGame() {
     }
     if (gameStarted) {
         utils::setIntervalTimer(turnTimerFd, turnIntervalNs);
+        utils::clearTimer(turnTimerFd);
     }
 }
 
@@ -251,6 +275,10 @@ void GameManager::endGame() {
     emitGameOver();
     gameStarted = false;
 
+    eraseDisconnectedPlayers();
+}
+
+void GameManager::eraseDisconnectedPlayers() {
     std::vector<playername_t> playersToErase;
     for (auto &p : players) {
         p.second.isReadyToPlay = false;
