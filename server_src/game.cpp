@@ -143,6 +143,7 @@ void GameManager::handleMessageFromPlayer(const utils::fingerprint_t &fingerprin
         if (!gameStarted && msg.turnDirection != TurnDirection::straight) {
             p.isReadyToPlay = true;
         }
+        p.turnDirection = msg.turnDirection;
         p.sessionId = msg.sessionId;
         players.insert({p.playerName, p});
         mqManager.addQueue(fingerprint, msg.nextExpectedEventNo);
@@ -234,6 +235,7 @@ void GameManager::startGame() {
     gameId = rng.generateNext();
     gameStarted = true;
     alivePlayers = static_cast<uint8_t>(players.size());
+    eatenPixels.clear();
 
     playerNumberInGame.clear();
     for (auto &p : players) {
@@ -306,14 +308,13 @@ void GameManager::runTurn() {
         if (player.isEliminated || !player.takesPartInCurrentGame) {
             continue;
         }
-
         if (player.turnDirection == TurnDirection::right) {
             player.movementDirection = static_cast<uint16_t>((player.movementDirection + turningSpeed) % 360);
         } else if (player.turnDirection == TurnDirection::left) {
             player.movementDirection = static_cast<uint16_t>((player.movementDirection + 360 - turningSpeed) % 360);
         }
 
-        double movementDirRad = player.movementDirection * M_PI / 180.0;
+        double movementDirRad = player.movementDirection / 180.0 * M_PI;
         player.coords.x += std::cos(movementDirRad);
         player.coords.y += std::sin(movementDirRad);
 
@@ -327,12 +328,12 @@ void GameManager::runTurn() {
         if (x == player.pixel.x && y == player.pixel.y) {
             continue;
         }
-        player.pixel.x = x;
-        player.pixel.y = y;
 
         if (x >= maxx || y >= maxy || eatenPixels.find({x, y}) != eatenPixels.end()) {
             eliminatePlayer(player);
         } else {
+            player.pixel.x = x;
+            player.pixel.y = y;
             eatenPixels.insert({x, y});
             emitPixelEvent(player);
         }

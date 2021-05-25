@@ -41,7 +41,6 @@ class MQManager {
 };
 
 struct Watcher {
-    utils::fingerprint_t fingerprint;
     uint64_t sessionId;
 };
 

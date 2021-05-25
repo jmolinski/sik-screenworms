@@ -152,7 +152,7 @@ void Client::enqueueMessageToServer() {
 }
 
 void Client::readUpdateFromGui() {
-    while (guiSock.hasAvailableLine()) {
+    while (true) {
         auto [success, line] = guiSock.readline();
         if (!success) {
             return;
@@ -162,8 +162,13 @@ void Client::readUpdateFromGui() {
             turnDirection = TurnDirection::left;
         } else if (line == "RIGHT_KEY_DOWN") {
             turnDirection = TurnDirection::right;
-        } else if (line == "LEFT_KEY_UP" || line == "RIGHT_KEY_UP") {
+        } else if ((line == "LEFT_KEY_UP" && turnDirection == TurnDirection::left) ||
+                   (line == "RIGHT_KEY_UP" && turnDirection == TurnDirection::right)) {
             turnDirection = TurnDirection::straight;
+        }
+
+        if (!guiSock.hasAvailableLine()) {
+            break;
         }
     }
 }
