@@ -148,6 +148,9 @@ EventNewGame::EventNewGame(uint32_t maxx, uint32_t maxy, const std::vector<std::
 }
 
 EventNewGame::EventNewGame(const unsigned char *buff, uint32_t size) {
+    if (size < 9) {
+        throw EncoderDecoderError();
+    }
     maxx = be32toh(binaryToNum<uint32_t>(buff));
     maxy = be32toh(binaryToNum<uint32_t>(buff + 4));
     playersFieldSize = size - 8;

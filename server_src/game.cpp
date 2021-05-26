@@ -13,9 +13,18 @@ void MQManager::schedule(uint32_t gameId, EventType eventType, const GameEventVa
                 return;
             }
         }
-        // New game id, we must create a new queue for it.
+        // New game id, we must create a new container for it.
         nextGames.push_back({gameId, {ScheduledEvent{eventType, event}}});
     }
+}
+
+bool MQManager::hasPendingMessagesForCurrentGame() const {
+    for (const auto &queue : queues) {
+        if (queue.second < currentGameEvents.size()) {
+            return true;
+        }
+    }
+    return false;
 }
 
 MessageAndRecipient MQManager::getNextMessage() {
@@ -47,24 +56,17 @@ MessageAndRecipient MQManager::getNextMessage() {
     }
 }
 
-bool MQManager::hasPendingMessagesForCurrentGame() const {
-    for (const auto &queue : queues) {
-        if (queue.second < currentGameEvents.size()) {
-            return true;
-        }
-    }
-    return false;
-}
-
 void MQManager::ack(const utils::fingerprint_t &fingerprint, uint32_t nextExpectedEventNo) {
-    auto &clientNextWanted = queues.find(fingerprint)->second;
     if (nextGames.empty()) {
-        clientNextWanted = std::min(static_cast<uint32_t>(currentGameEvents.size()), nextExpectedEventNo);
+        uint32_t newValue = std::min(static_cast<uint32_t>(currentGameEvents.size()), nextExpectedEventNo);
+        queues.find(fingerprint)->second = newValue;
     }
 }
 
 void MQManager::dropQueue(const utils::fingerprint_t &fingerprint) {
-    queues.erase(fingerprint);
+    if (queues.find(fingerprint) != queues.end()) {
+        queues.erase(fingerprint);
+    }
     auto it = clientsToServeSchedule.begin();
     while (it != clientsToServeSchedule.end()) {
         if (*it == fingerprint) {
@@ -76,7 +78,11 @@ void MQManager::dropQueue(const utils::fingerprint_t &fingerprint) {
 }
 
 void MQManager::addQueue(const utils::fingerprint_t &fingerprint, uint32_t nextExpectedEventNo) {
-    queues.insert({fingerprint, nextExpectedEventNo});
+    if (queues.find(fingerprint) != queues.end()) {
+        return;
+    }
+    uint32_t nextExpected = std::min(static_cast<uint32_t>(currentGameEvents.size()), nextExpectedEventNo);
+    queues.insert({fingerprint, nextExpected});
     clientsToServeSchedule.push_back(fingerprint);
 }
 
@@ -84,6 +90,7 @@ GameManager::GameManager(uint32_t rngSeed, uint8_t turningSpeed, uint16_t maxx, 
                          long turnIntervalNs)
     : gameId(0), gameStarted(false), rng(rngSeed), maxx(maxx), maxy(maxy), turningSpeed(turningSpeed),
       turnTimerFd(turnTimerFd), turnIntervalNs(turnIntervalNs) {
+    utils::setIntervalTimer(turnTimerFd, turnIntervalNs);
 }
 
 void GameManager::handleMessageFromWatcher(const utils::fingerprint_t &fingerprint, const ClientToServerMessage &msg) {
@@ -94,10 +101,8 @@ void GameManager::handleMessageFromWatcher(const utils::fingerprint_t &fingerpri
                 return;
             }
         }
-        if (watchers.size() + players.size() < MAX_PLAYERS) {
-            watchers.insert({fingerprint, {msg.sessionId}});
-            mqManager.addQueue(fingerprint, msg.nextExpectedEventNo);
-        }
+        watchers.insert({fingerprint, {msg.sessionId}});
+        mqManager.addQueue(fingerprint, msg.nextExpectedEventNo);
     } else {
         auto &watcher = it->second;
         if (watcher.sessionId == msg.sessionId) {
@@ -124,18 +129,20 @@ void GameManager::handleMessageFromPlayer(const utils::fingerprint_t &fingerprin
         }
         mqManager.ack(fingerprint, msg.nextExpectedEventNo);
     } else {
-        for (auto &p : players) {
+        for (const auto &p : players) {
             if (p.second.fingerprint == fingerprint && msg.sessionId > p.second.sessionId) {
                 dropConnection(fingerprint);
             }
         }
-        if (watchers.size() + players.size() == MAX_PLAYERS) {
+        if (players.size() == MAX_PLAYERS) {
             return;
         }
 
         Player p;
         p.playerName = msg.playerName;
         p.fingerprint = fingerprint;
+        p.sessionId = msg.sessionId;
+
         p.takesPartInCurrentGame = false;
         p.isEliminated = false;
         p.isDisconnected = false;
@@ -144,7 +151,7 @@ void GameManager::handleMessageFromPlayer(const utils::fingerprint_t &fingerprin
             p.isReadyToPlay = true;
         }
         p.turnDirection = msg.turnDirection;
-        p.sessionId = msg.sessionId;
+
         players.insert({p.playerName, p});
         mqManager.addQueue(fingerprint, msg.nextExpectedEventNo);
     }
@@ -281,24 +288,21 @@ void GameManager::endGame() {
 }
 
 void GameManager::eraseDisconnectedPlayers() {
-    std::vector<playername_t> playersToErase;
+    std::vector<std::pair<playername_t, utils::fingerprint_t>> playersToErase;
     for (auto &p : players) {
         p.second.isReadyToPlay = false;
 
         if (p.second.isDisconnected) {
-            playersToErase.push_back(p.first);
+            playersToErase.emplace_back(p.first, p.second.fingerprint);
         }
     }
-    for (const auto &pname : playersToErase) {
-        players.erase(pname);
+    for (const auto &p : playersToErase) {
+        players.erase(p.first);
+        mqManager.dropQueue(p.second);
     }
 }
 
 void GameManager::runTurn() {
-    if (!gameStarted) {
-        return;
-    }
-
     for (auto &playerPair : players) {
         if (!gameStarted) {
             break;

@@ -26,10 +26,10 @@ class MQManager {
     std::vector<Event> currentGameEvents;
     gameid_t currentlyBroadcastedGameId;
 
-    bool hasPendingMessagesForCurrentGame() const;
+    [[nodiscard]] bool hasPendingMessagesForCurrentGame() const;
 
   public:
-    bool isEmpty() const {
+    [[nodiscard]] bool isEmpty() const {
         return !hasPendingMessagesForCurrentGame() && nextGames.empty();
     }
 

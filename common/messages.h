@@ -117,7 +117,7 @@ struct Event {
 };
 
 struct ServerToClientMessage {
-    static constexpr size_t minStructSize = 17, maxStructSize = MAX_UDP_DATA_FIELD_SIZE;
+    static constexpr size_t minStructSize = 4, maxStructSize = MAX_UDP_DATA_FIELD_SIZE;
 
     uint32_t gameId;
     std::vector<Event> events;

@@ -70,7 +70,7 @@ void Server::cleanupObsoleteConnections() {
     auto currentTime = utils::getCurrentTimestamp().time_since_epoch().count();
     std::vector<utils::fingerprint_t> connsToDrop;
 
-    for (auto &lastConn : lastCommunicationTs) {
+    for (const auto &lastConn : lastCommunicationTs) {
         auto lastConnTime = lastConn.second.time_since_epoch().count();
         if ((currentTime - lastConnTime) > (CONNECTION_EXPIRATION_TIME_SEC * US_IN_SECOND)) {
             gameManager.dropConnection(lastConn.first);
