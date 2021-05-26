@@ -58,17 +58,20 @@ Event::Event(uint32_t eventNo, EventType eventType, GameEventVariant eventVarian
 
 Event::Event(const unsigned char *buffer, size_t size, size_t *bytesUsed) : eventData(EventGameOver()) {
     uint32_t len = be32toh(binaryToNum<uint32_t>(buffer));
+    if (len < 5) {
+        throw EncoderDecoderError();
+    }
     eventNo = be32toh(binaryToNum<uint32_t>(buffer + 4));
     eventType = EventType(buffer[8]);
     const uint32_t eventHeaderSize = 9;
     const uint32_t eventDataSize = len - 5;
     *bytesUsed = len + sizeof(uint32_t) + sizeof(uint32_t);
 
-    if (len + 8 > size) {
+    if ((eventHeaderSize + eventDataSize + sizeof(uint32_t)) > size) {
         throw EncoderDecoderError();
     }
 
-    uint32_t crc32Got = be32toh(binaryToNum<uint32_t>(buffer + len + sizeof(len)));
+    uint32_t crc32Got = be32toh(binaryToNum<uint32_t>(buffer + eventHeaderSize + eventDataSize));
     uint32_t crc32Expected = utils::crc32(buffer, len + sizeof(len));
     if (crc32Got != crc32Expected) {
         throw CRC32MismatchError();
@@ -148,13 +151,16 @@ EventNewGame::EventNewGame(uint32_t maxx, uint32_t maxy, const std::vector<std::
 }
 
 EventNewGame::EventNewGame(const unsigned char *buff, uint32_t size) {
-    if (size < 9) {
+    if (size < 10) {
         throw EncoderDecoderError();
     }
     maxx = be32toh(binaryToNum<uint32_t>(buff));
     maxy = be32toh(binaryToNum<uint32_t>(buff + 4));
     playersFieldSize = size - 8;
     memcpy(players, buff + 8, playersFieldSize);
+    if (players[playersFieldSize - 1] != '\0') {
+        throw EncoderDecoderError();
+    }
 }
 
 uint32_t EventNewGame::encode(unsigned char *buff) const {
@@ -234,9 +240,7 @@ ServerToClientMessage::ServerToClientMessage(unsigned char *buffer, size_t size)
         size_t eventSize = 0;
         try {
             Event event(buffer + bytesRead, size - bytesRead, &eventSize);
-            if (event.eventType != EventType::unknown) {
-                events.push_back(event);
-            }
+            events.push_back(event);
         } catch (const CRC32MismatchError &e) {
             // We stop decoding further data, but preserve the first events with correct checksum.
             return;

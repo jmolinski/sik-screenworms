@@ -51,6 +51,7 @@ int main(int argc, char *argv[]) {
             auto actualDecodedPlayers = e2.parsedPlayers();
             assert(actualPlayers == expectedPlayers);
             assert(actualDecodedPlayers == expectedPlayers);
+
             break;
         }
         case 6: {

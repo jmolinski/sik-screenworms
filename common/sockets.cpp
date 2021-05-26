@@ -7,7 +7,7 @@
 
 constexpr unsigned TCP_BUFF_SIZE = 1000;
 
-UdpSocket::UdpSocket(addrinfo addrInfo, const std::string &hostname, uint16_t portNum, bool doBind) {
+UdpSocket::UdpSocket(addrinfo addrInfo, const std::string &hostname, uint16_t portNum, bool doBind) : info{} {
     addrinfo *servinfo;
     std::string port = std::to_string(portNum);
     int status = getaddrinfo(hostname.empty() ? nullptr : hostname.c_str(), port.c_str(), &addrInfo, &servinfo);

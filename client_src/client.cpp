@@ -126,8 +126,8 @@ void Client::readMessageFromServer() {
         ServerToClientMessage m(buf, bytesRead);
         processMessageFromServer(m);
     } catch (const EncoderDecoderError &e) {
-        std::cerr << "Error in server message decoding. Skipping this datagram processing." << std::endl;
-        return;
+        std::cerr << "Error in server message decoding." << std::endl;
+        exit(EXIT_FAILURE);
     }
 }
 
